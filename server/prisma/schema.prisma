@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+model FoodEntry {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(120)
+  calories  Int
+  proteinG  Float?   @map("protein_g")
+  carbsG    Float?   @map("carbs_g")
+  fatG      Float?   @map("fat_g")
+  mealType  MealType @default(SNACK) @map("meal_type")
+  loggedAt  DateTime @default(now()) @map("logged_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([loggedAt])
+  @@map("food_entries")
+}
+
+model WeightEntry {
+  id        String   @id @default(uuid()) @db.Uuid
+  weightKg  Float    @map("weight_kg")
+  note      String?  @db.VarChar(280)
+  loggedAt  DateTime @default(now()) @map("logged_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([loggedAt])
+  @@map("weight_entries")
+}

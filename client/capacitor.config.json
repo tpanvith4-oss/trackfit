@@ -1,0 +1,12 @@
+{
+  "appId": "com.personal.trackfit",
+  "appName": "TrackFit",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
