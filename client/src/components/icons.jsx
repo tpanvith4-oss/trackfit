@@ -39,3 +39,9 @@ export const RefreshIcon = (props) => (
     <path d="M21 3v5h-5" />
   </svg>
 );
+
+export const SpinnerIcon = ({ className = '', ...props }) => (
+  <svg {...base} className={`animate-spin ${className}`} {...props}>
+    <path d="M21 12a9 9 0 1 1-6.22-8.56" />
+  </svg>
+);

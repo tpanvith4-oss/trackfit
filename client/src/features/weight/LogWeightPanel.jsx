@@ -5,12 +5,12 @@ import { IconButton } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { ErrorMessage, ListSkeleton } from '../../components/ui/StatusMessage.jsx';
 import { useAsyncData } from '../../hooks/useAsyncData.js';
-import { formatDay } from '../../utils/date.js';
-import { formatNumber } from '../../utils/number.js';
-import { WeightEntryForm } from './WeightEntryForm.jsx';
 import { WeightEntryList } from './WeightEntryList.jsx';
+import { WeightForm } from './WeightForm.jsx';
+import { WeightSummaryCard } from './WeightSummaryCard.jsx';
+import { calculateWeightStats, findReferenceEntry, getRateStatus } from './weightStats.js';
 
-const HISTORY_LIMIT = 30;
+const HISTORY_LIMIT = 90;
 
 const byLoggedAtDesc = (a, b) => new Date(b.loggedAt) - new Date(a.loggedAt);
 
@@ -22,9 +22,9 @@ export function LogWeightPanel() {
   const [deleteError, setDeleteError] = useState(null);
   const entries = useMemo(() => data ?? [], [data]);
 
-  const latest = entries[0];
-  const oldest = entries.at(-1);
-  const change = latest && oldest && latest !== oldest ? latest.weightKg - oldest.weightKg : null;
+  const stats = useMemo(() => calculateWeightStats(entries), [entries]);
+  const status = useMemo(() => getRateStatus(stats), [stats]);
+  const reference = useMemo(() => findReferenceEntry(stats.sorted), [stats]);
 
   const handleCreate = async (payload) => {
     const created = await weightApi.create(payload);
@@ -44,29 +44,14 @@ export function LogWeightPanel() {
     }
   };
 
+  const isInitialLoad = loading && !data;
+
   return (
     <div className="space-y-4">
-      <Card title="Current weight" subtitle={latest ? `Last logged ${formatDay(latest.loggedAt)}` : 'No data yet'}>
-        <div className="flex items-end justify-between">
-          <p className="text-4xl font-bold tabular-nums text-slate-100">
-            {latest ? formatNumber(latest.weightKg) : '—'}
-            <span className="ml-1 text-base font-medium text-slate-400">kg</span>
-          </p>
-          {change != null && (
-            <p className="text-right text-sm text-slate-400">
-              <span className={`font-semibold ${change > 0 ? 'text-amber-400' : 'text-brand-400'}`}>
-                {change > 0 ? '+' : ''}
-                {formatNumber(change)} kg
-              </span>
-              <br />
-              over last {entries.length} entries
-            </p>
-          )}
-        </div>
-      </Card>
+      <WeightSummaryCard stats={stats} status={status} isLoading={isInitialLoad} />
 
-      <Card title="Log weight" subtitle="Weigh in at the same time each day for best accuracy">
-        <WeightEntryForm onSubmit={handleCreate} lastWeightKg={latest?.weightKg} />
+      <Card title="Log weight" subtitle="Weigh in after waking, before food or water">
+        <WeightForm onSubmit={handleCreate} reference={reference} />
       </Card>
 
       <Card
@@ -80,7 +65,7 @@ export function LogWeightPanel() {
         <div className="space-y-3">
           <ErrorMessage error={error} onRetry={reload} />
           <ErrorMessage error={deleteError} />
-          {loading && !data ? (
+          {isInitialLoad ? (
             <ListSkeleton />
           ) : (
             !error && <WeightEntryList entries={entries} onDelete={handleDelete} deletingId={deletingId} />

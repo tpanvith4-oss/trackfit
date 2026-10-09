@@ -2,7 +2,7 @@ import { TrashIcon } from '../../components/icons.jsx';
 import { IconButton } from '../../components/ui/Button.jsx';
 import { EmptyState } from '../../components/ui/StatusMessage.jsx';
 import { formatDay, formatTime } from '../../utils/date.js';
-import { formatNumber } from '../../utils/number.js';
+import { formatFixed, formatNumber } from '../../utils/number.js';
 
 function Delta({ value }) {
   if (value == null || value === 0) return null;
@@ -33,7 +33,7 @@ export function WeightEntryList({ entries, onDelete, deletingId }) {
               {entry.note && <p className="truncate text-xs text-slate-500">{entry.note}</p>}
             </div>
             <div className="flex shrink-0 flex-col items-end">
-              <span className="text-sm font-semibold tabular-nums text-slate-200">{formatNumber(entry.weightKg)} kg</span>
+              <span className="text-sm font-semibold tabular-nums text-slate-200">{formatFixed(entry.weightKg)} kg</span>
               <Delta value={delta} />
             </div>
             <IconButton
