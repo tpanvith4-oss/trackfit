@@ -27,6 +27,7 @@ model User {
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
   foodEntries     FoodEntry[]
   weightEntries   WeightEntry[]
+  sleepSchedule   SleepSchedule?
 
   @@map("users")
 }
@@ -61,4 +62,19 @@ model WeightEntry {
 
   @@index([userId, loggedAt])
   @@map("weight_entries")
+}
+
+model SleepSchedule {
+  id                   String   @id @default(cuid())
+  userId               String   @unique @map("user_id")
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetWakeTime       String   @default("06:30") @map("target_wake_time") @db.VarChar(5)
+  targetSleepHours     Float    @default(7.5) @map("target_sleep_hours")
+  latencyMinutes       Int      @default(15) @map("latency_minutes")
+  enableCognitiveAlarm Boolean  @default(true) @map("enable_cognitive_alarm")
+  alarmChallengeType   String   @default("math") @map("alarm_challenge_type") @db.VarChar(16)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@map("sleep_schedules")
 }

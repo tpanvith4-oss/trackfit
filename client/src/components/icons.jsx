@@ -82,3 +82,92 @@ export const CheckCircleIcon = (props) => (
     <path d="m8 12 3 3 5-6" />
   </svg>
 );
+
+export const CheckIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M20 6 9 17l-5-5" />
+  </svg>
+);
+
+export const CloseIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M18 6 6 18" />
+    <path d="m6 6 12 12" />
+  </svg>
+);
+
+export const MoonIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+  </svg>
+);
+
+export const SunIcon = (props) => (
+  <svg {...base} {...props}>
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2m-7.07-2.93 1.41-1.41m11.32-11.32 1.41-1.41M2 12h2m16 0h2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41" />
+  </svg>
+);
+
+export const AlarmClockIcon = (props) => (
+  <svg {...base} {...props}>
+    <circle cx="12" cy="13" r="8" />
+    <path d="M12 9v4l2 2" />
+    <path d="M5 3 2 6m20 0-3-3M6.38 18.7 4 21m13.64-2.33L20 21" />
+  </svg>
+);
+
+export const PlayIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M6 3.5v17a1 1 0 0 0 1.5.86l14-8.5a1 1 0 0 0 0-1.72l-14-8.5A1 1 0 0 0 6 3.5Z" />
+  </svg>
+);
+
+export const PauseIcon = (props) => (
+  <svg {...base} {...props}>
+    <rect x="6" y="4" width="4" height="16" rx="1" />
+    <rect x="14" y="4" width="4" height="16" rx="1" />
+  </svg>
+);
+
+export const WavesIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+    <path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+    <path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1" />
+  </svg>
+);
+
+export const ShuffleIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="m18 14 4 4-4 4M18 2l4 4-4 4" />
+    <path d="M2 18h1.97a4 4 0 0 0 3.3-1.7l5.46-8.6A4 4 0 0 1 16.03 6H22" />
+    <path d="M2 6h1.97a4 4 0 0 1 3.6 2.2M22 18h-6.04a4 4 0 0 1-3.3-1.8l-.36-.45" />
+  </svg>
+);
+
+export const CoffeeIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M10 2v2M14 2v2M6 2v2" />
+    <path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1" />
+  </svg>
+);
+
+export const ThermometerIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
+  </svg>
+);
+
+export const SmartphoneIcon = (props) => (
+  <svg {...base} {...props}>
+    <rect x="5" y="2" width="14" height="20" rx="2" />
+    <path d="M12 18h.01" />
+  </svg>
+);
+
+export const BedIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="M2 4v16M2 8h18a2 2 0 0 1 2 2v10M2 17h20M6 8v9" />
+  </svg>
+);

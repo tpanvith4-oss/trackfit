@@ -191,7 +191,7 @@ export function AuthModal() {
           <fieldset key={mode} disabled={isSubmitting} className="space-y-4 motion-safe:animate-fade-in">
             {isRegister && (
               <Field label="Full name" htmlFor={fieldId('name')} error={fieldErrors.name}>
-                <Input {...fieldProps('name')} autoComplete="name" autoCapitalize="words" placeholder="e.g. Panvith T" maxLength={80} />
+                <Input {...fieldProps('name')} autoComplete="name" autoCapitalize="words" placeholder="e.g. Anvith" maxLength={80} />
               </Field>
             )}
 
@@ -209,7 +209,7 @@ export function AuthModal() {
                 spellCheck={false}
                 enterKeyHint="next"
                 maxLength={30}
-                placeholder="e.g. panvith"
+                placeholder="e.g. anvith"
               />
             </Field>
 

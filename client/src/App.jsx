@@ -1,17 +1,20 @@
 import { useState } from 'react';
 import { AppHeader } from './components/AppHeader.jsx';
-import { ScaleIcon, UtensilsIcon } from './components/icons.jsx';
+import { MoonIcon, ScaleIcon, UtensilsIcon } from './components/icons.jsx';
 import { TabBar } from './components/TabBar.jsx';
 import { WelcomeToast } from './components/WelcomeToast.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import { AuthModal } from './features/auth/AuthModal.jsx';
 import { LogFoodPanel } from './features/food/LogFoodPanel.jsx';
+import { SleepProvider } from './features/sleep/SleepContext.jsx';
+import { SleepPanel } from './features/sleep/SleepPanel.jsx';
 import { LogWeightPanel } from './features/weight/LogWeightPanel.jsx';
 import { useApiHealth } from './hooks/useApiHealth.js';
 
 const TABS = [
   { id: 'food', label: 'Log Food', Icon: UtensilsIcon, Panel: LogFoodPanel },
   { id: 'weight', label: 'Log Weight', Icon: ScaleIcon, Panel: LogWeightPanel },
+  { id: 'sleep', label: 'Sleep', Icon: MoonIcon, Panel: SleepPanel },
 ];
 
 function Dashboard() {
@@ -19,7 +22,7 @@ function Dashboard() {
   const { Panel } = TABS.find((tab) => tab.id === activeTab);
 
   return (
-    <>
+    <SleepProvider>
       <main
         id={`panel-${activeTab}`}
         role="tabpanel"
@@ -30,7 +33,7 @@ function Dashboard() {
       </main>
 
       <TabBar tabs={TABS} activeTab={activeTab} onChange={setActiveTab} />
-    </>
+    </SleepProvider>
   );
 }
 
