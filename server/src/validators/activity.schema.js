@@ -13,7 +13,7 @@ const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
  * ("2026-10-10" or "2026-10-10T21:00:00+05:30") so the phone's time zone decides the day.
  */
 const calendarDay = z
-  .string({ error: 'date is required, e.g. "2026-10-10"' })
+  .string({ error: 'date must be a string like "2026-10-10"' })
   .trim()
   .transform((value, ctx) => {
     const match = CALENDAR_DATE.exec(value);
@@ -27,13 +27,21 @@ const calendarDay = z
   })
   .refine((date) => date.getUTCFullYear() >= 2000 && date.getTime() <= Date.now() + DAY_MS, 'date is out of range');
 
+const isBlank = (value) => value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+
+/**
+ * Omitted dates mean today in UTC. Senders far from UTC should still send their own date around
+ * local midnight, or a sync can land on the neighbouring day and overwrite its totals.
+ */
+const syncDate = z.preprocess((value) => (isBlank(value) ? new Date().toISOString().split('T')[0] : value), calendarDay);
+
 // Shortcuts may send numbers as JSON numbers or numeric strings; separators like "8,234" are rejected.
 const metric = (max) => z.coerce.number({ error: 'Must be a number' }).min(0).max(max);
 const wholeMetric = (max) => metric(max).transform(Math.round);
 
 export const healthSyncSchema = z
   .object({
-    date: calendarDay,
+    date: syncDate,
     steps: wholeMetric(200_000).optional(),
     activeCalories: wholeMetric(20_000).optional(),
     distanceKm: metric(1_000)
