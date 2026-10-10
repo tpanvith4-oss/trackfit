@@ -4,8 +4,10 @@ import { RefreshIcon } from '../../components/icons.jsx';
 import { IconButton } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { ErrorMessage, ListSkeleton } from '../../components/ui/StatusMessage.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useAsyncData } from '../../hooks/useAsyncData.js';
 import { startOfToday, startOfTomorrow } from '../../utils/date.js';
+import { getDailyTargets } from './constants.js';
 import { MacroCard } from './MacroCard.jsx';
 import { MealForm } from './MealForm.jsx';
 import { MealHistory } from './MealHistory.jsx';
@@ -15,6 +17,8 @@ const sumBy = (entries, field) => entries.reduce((total, entry) => total + (Numb
 const createOptimisticId = () => `optimistic-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 export function LogFoodPanel() {
+  const { user } = useAuth();
+  const targets = useMemo(() => getDailyTargets(user), [user]);
   const { data, error, loading, reload, setData } = useAsyncData((signal) =>
     foodApi.list({ from: startOfToday(), to: startOfTomorrow(), limit: 200 }, { signal }),
   );
@@ -80,7 +84,7 @@ export function LogFoodPanel() {
 
   return (
     <div className="space-y-4">
-      <MacroCard totals={totals} isLoading={isInitialLoad} />
+      <MacroCard totals={totals} targets={targets} isLoading={isInitialLoad} />
 
       <Card title="Log a meal" subtitle="Tap a staple to pre-fill, then tweak anything">
         <MealForm onSubmit={handleCreate} />

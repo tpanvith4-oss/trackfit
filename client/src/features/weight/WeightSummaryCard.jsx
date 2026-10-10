@@ -38,15 +38,14 @@ function StatTile({ label, value, unit, caption, valueClassName = 'text-slate-10
   );
 }
 
-function describeTargetZone(weightKg) {
-  const { targetMinKg, targetMaxKg } = CUT_PROTOCOL;
+function describeTargetZone(weightKg, { targetMinKg, targetMaxKg }) {
   if (weightKg > targetMaxKg) return `${formatFixed(weightKg - targetMaxKg)} kg to target zone`;
   if (weightKg >= targetMinKg) return 'In target zone';
   return `${formatFixed(targetMinKg - weightKg)} kg below target zone`;
 }
 
-function ProtocolProgress({ weightKg, basis }) {
-  const { baselineKg, targetMinKg, targetMaxKg } = CUT_PROTOCOL;
+function ProtocolProgress({ weightKg, basis, protocol }) {
+  const { baselineKg, targetMinKg, targetMaxKg } = protocol;
   const totalToLose = baselineKg - targetMaxKg;
   const lostSoFar = weightKg != null ? baselineKg - weightKg : 0;
 
@@ -73,7 +72,7 @@ function ProtocolProgress({ weightKg, basis }) {
         <p className="mt-1.5 flex justify-between gap-3 text-xs text-slate-500">
           <span className="tabular-nums">{formatSigned(weightKg - baselineKg)} kg from baseline</span>
           <span className="text-right">
-            {describeTargetZone(weightKg)} <span className="text-slate-600">({basis})</span>
+            {describeTargetZone(weightKg, protocol)} <span className="text-slate-600">({basis})</span>
           </span>
         </p>
       ) : (
@@ -83,7 +82,7 @@ function ProtocolProgress({ weightKg, basis }) {
   );
 }
 
-export function WeightSummaryCard({ stats, status, isLoading = false }) {
+export function WeightSummaryCard({ stats, status, protocol = CUT_PROTOCOL, isLoading = false }) {
   const { latest, currentAvg, currentDays, previousAvg, weeklyDelta } = stats;
   const deltaTone = TONE_STYLES[status.tone] ?? TONE_STYLES.subtle;
   const progressWeight = currentAvg ?? latest?.weightKg ?? null;
@@ -110,7 +109,11 @@ export function WeightSummaryCard({ stats, status, isLoading = false }) {
           />
         </div>
 
-        <ProtocolProgress weightKg={progressWeight} basis={currentAvg != null ? '7-day avg' : 'latest'} />
+        <ProtocolProgress
+          weightKg={progressWeight}
+          basis={currentAvg != null ? '7-day avg' : 'latest'}
+          protocol={protocol}
+        />
       </div>
     </Card>
   );

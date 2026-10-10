@@ -4,7 +4,9 @@ import { RefreshIcon } from '../../components/icons.jsx';
 import { IconButton } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { ErrorMessage, ListSkeleton } from '../../components/ui/StatusMessage.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useAsyncData } from '../../hooks/useAsyncData.js';
+import { getCutProtocol } from './constants.js';
 import { WeightEntryList } from './WeightEntryList.jsx';
 import { WeightForm } from './WeightForm.jsx';
 import { WeightSummaryCard } from './WeightSummaryCard.jsx';
@@ -15,6 +17,8 @@ const HISTORY_LIMIT = 90;
 const byLoggedAtDesc = (a, b) => new Date(b.loggedAt) - new Date(a.loggedAt);
 
 export function LogWeightPanel() {
+  const { user } = useAuth();
+  const protocol = useMemo(() => getCutProtocol(user), [user]);
   const { data, error, loading, reload, setData } = useAsyncData((signal) =>
     weightApi.list({ limit: HISTORY_LIMIT }, { signal }),
   );
@@ -48,10 +52,10 @@ export function LogWeightPanel() {
 
   return (
     <div className="space-y-4">
-      <WeightSummaryCard stats={stats} status={status} isLoading={isInitialLoad} />
+      <WeightSummaryCard stats={stats} status={status} protocol={protocol} isLoading={isInitialLoad} />
 
       <Card title="Log weight" subtitle="Weigh in after waking, before food or water">
-        <WeightForm onSubmit={handleCreate} reference={reference} />
+        <WeightForm onSubmit={handleCreate} reference={reference} fallbackWeightKg={protocol.baselineKg} />
       </Card>
 
       <Card

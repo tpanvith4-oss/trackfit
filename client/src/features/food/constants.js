@@ -10,6 +10,11 @@ export const DAILY_TARGETS = Object.freeze({
   proteinG: 135,
 });
 
+export const getDailyTargets = (user) => ({
+  calories: user?.dailyCalories ?? DAILY_TARGETS.calories,
+  proteinG: user?.dailyProtein ?? DAILY_TARGETS.proteinG,
+});
+
 export const QUICK_STAPLES = [
   { id: 'protein-oats', name: 'Protein Oats + Whey', mealType: 'BREAKFAST', calories: 500, proteinG: 40, carbsG: 55, fatG: 12 },
   { id: 'rice-sambar-curd', name: 'Rice + Sambar + Curd', mealType: 'LUNCH', calories: 480, proteinG: 18, carbsG: 80, fatG: 8 },

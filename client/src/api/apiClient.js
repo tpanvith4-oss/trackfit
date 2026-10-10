@@ -1,3 +1,5 @@
+import { getAuthToken } from './authSession.js';
+
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000').replace(/\/+$/, '');
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -9,6 +11,14 @@ export class ApiError extends Error {
     this.status = status;
     this.details = details;
   }
+}
+
+const unauthorizedListeners = new Set();
+
+/** Subscribes to 401 responses on authenticated requests. Returns an unsubscribe function. */
+export function onUnauthorized(listener) {
+  unauthorizedListeners.add(listener);
+  return () => unauthorizedListeners.delete(listener);
 }
 
 function buildUrl(path, query) {
@@ -28,7 +38,19 @@ async function parseBody(response) {
   return contentType.includes('application/json') ? response.json() : response.text();
 }
 
-async function request(path, { method = 'GET', body, query, headers, signal, timeoutMs = DEFAULT_TIMEOUT_MS } = {}) {
+function toApiError(response, payload) {
+  const error = payload?.error;
+  const firstDetail = error?.details?.[0]?.message;
+  return new ApiError(firstDetail ?? error?.message ?? `Request failed with status ${response.status}`, {
+    status: response.status,
+    details: error?.details,
+  });
+}
+
+async function request(
+  path,
+  { method = 'GET', body, query, headers, signal, auth = true, timeoutMs = DEFAULT_TIMEOUT_MS } = {},
+) {
   const controller = new AbortController();
   const timeoutId = setTimeout(
     () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
@@ -37,12 +59,15 @@ async function request(path, { method = 'GET', body, query, headers, signal, tim
   const forwardAbort = () => controller.abort(signal.reason);
   signal?.addEventListener('abort', forwardAbort, { once: true });
 
+  const token = auth ? getAuthToken() : null;
+
   try {
     const response = await fetch(buildUrl(path, query), {
       method,
       headers: {
         Accept: 'application/json',
         ...(body !== undefined && { 'Content-Type': 'application/json' }),
+        ...(token && { Authorization: `Bearer ${token}` }),
         ...headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -52,10 +77,11 @@ async function request(path, { method = 'GET', body, query, headers, signal, tim
     const payload = await parseBody(response);
 
     if (!response.ok) {
-      throw new ApiError(payload?.error?.message ?? `Request failed with status ${response.status}`, {
-        status: response.status,
-        details: payload?.error?.details,
-      });
+      const apiError = toApiError(response, payload);
+      if (response.status === 401 && token) {
+        unauthorizedListeners.forEach((listener) => listener(apiError));
+      }
+      throw apiError;
     }
 
     return payload;

@@ -24,12 +24,36 @@ const parseList = (value) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+const nodeEnv = process.env.NODE_ENV ?? 'development';
+// Render sets RENDER=true on every service, so a missing NODE_ENV there still counts as deployed.
+const isDeployed = nodeEnv === 'production' || Boolean(process.env.RENDER);
+
+const LOCAL_DEV_JWT_SECRET = 'trackfit-local-dev-only-secret-never-use-in-production';
+const MIN_JWT_SECRET_LENGTH = 32;
+
+function resolveJwtSecret() {
+  const secret = process.env.JWT_SECRET?.trim();
+  if (secret) {
+    if (isDeployed && secret.length < MIN_JWT_SECRET_LENGTH) {
+      throw new Error(`JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters in deployed environments.`);
+    }
+    return secret;
+  }
+  if (isDeployed) {
+    throw new Error('JWT_SECRET is required in deployed environments. Set it in the service environment settings.');
+  }
+  console.warn('[auth] JWT_SECRET is not set; using the local development secret.');
+  return LOCAL_DEV_JWT_SECRET;
+}
+
 export const env = Object.freeze({
-  nodeEnv: process.env.NODE_ENV ?? 'development',
+  nodeEnv,
   port: parsePort(process.env.PORT, 4000),
   host: process.env.HOST ?? '0.0.0.0',
   databaseUrl: process.env.DATABASE_URL,
   corsOrigins: parseList(process.env.CORS_ORIGINS),
+  jwtSecret: resolveJwtSecret(),
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN?.trim() || '30d',
 });
 
-export const isProduction = env.nodeEnv === 'production';
+export const isProduction = nodeEnv === 'production';

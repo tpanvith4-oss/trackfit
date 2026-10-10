@@ -14,8 +14,27 @@ enum MealType {
   SNACK
 }
 
+model User {
+  id              String        @id @default(cuid())
+  username        String        @unique
+  passwordHash    String        @map("password_hash")
+  name            String
+  baselineWeight  Float         @default(64.0) @map("baseline_weight")
+  targetWeightMin Float         @default(58.0) @map("target_weight_min")
+  targetWeightMax Float         @default(60.0) @map("target_weight_max")
+  dailyCalories   Int           @default(1800) @map("daily_calories")
+  dailyProtein    Int           @default(135) @map("daily_protein")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  foodEntries     FoodEntry[]
+  weightEntries   WeightEntry[]
+
+  @@map("users")
+}
+
 model FoodEntry {
   id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String   @db.VarChar(120)
   calories  Int
   proteinG  Float?   @map("protein_g")
@@ -26,18 +45,20 @@ model FoodEntry {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  @@index([loggedAt])
+  @@index([userId, loggedAt])
   @@map("food_entries")
 }
 
 model WeightEntry {
   id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   weightKg  Float    @map("weight_kg")
   note      String?  @db.VarChar(280)
   loggedAt  DateTime @default(now()) @map("logged_at") @db.Timestamptz(3)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  @@index([loggedAt])
+  @@index([userId, loggedAt])
   @@map("weight_entries")
 }

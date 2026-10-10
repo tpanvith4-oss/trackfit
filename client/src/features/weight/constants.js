@@ -4,6 +4,12 @@ export const CUT_PROTOCOL = Object.freeze({
   targetMaxKg: 60.0,
 });
 
+export const getCutProtocol = (user) => ({
+  baselineKg: user?.baselineWeight ?? CUT_PROTOCOL.baselineKg,
+  targetMinKg: user?.targetWeightMin ?? CUT_PROTOCOL.targetMinKg,
+  targetMaxKg: user?.targetWeightMax ?? CUT_PROTOCOL.targetMaxKg,
+});
+
 export const ROLLING_WINDOW_DAYS = 7;
 export const MIN_ENTRIES_FOR_RATE = 4;
 

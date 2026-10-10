@@ -53,7 +53,7 @@ function QuickAdjustments({ reference, currentValue, disabled, onPick }) {
   );
 }
 
-export function WeightForm({ onSubmit, reference }) {
+export function WeightForm({ onSubmit, reference, fallbackWeightKg }) {
   const id = useId();
   const [weightKg, setWeightKg] = useState('');
   const [note, setNote] = useState('');
@@ -102,7 +102,7 @@ export function WeightForm({ onSubmit, reference }) {
             step="0.1"
             value={weightKg}
             onChange={(event) => setWeightKg(event.target.value)}
-            placeholder={reference ? formatFixed(reference.entry.weightKg) : '64.0'}
+            placeholder={formatFixed(reference?.entry.weightKg ?? fallbackWeightKg ?? 64)}
             required
           />
         </Field>
