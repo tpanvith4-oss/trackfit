@@ -26,11 +26,23 @@ export const PROFILE_SELECT = Object.freeze({
 const usernameTaken = () => new HttpError(409, 'Username already taken');
 const invalidCredentials = () => new HttpError(401, 'Invalid username or password');
 
+/** Scope of tokens handed to iOS Shortcuts: they can only post activity to the sync endpoint. */
+export const HEALTH_SYNC_SCOPE = 'health-sync';
+const HEALTH_SYNC_TOKEN_TTL = '365d';
+
 export function signToken(user) {
   return jwt.sign({ userId: user.id, username: user.username }, env.jwtSecret, {
     algorithm: TOKEN_ALGORITHM,
     expiresIn: env.jwtExpiresIn,
   });
+}
+
+export function signHealthSyncToken(userId) {
+  const token = jwt.sign({ userId, scope: HEALTH_SYNC_SCOPE }, env.jwtSecret, {
+    algorithm: TOKEN_ALGORITHM,
+    expiresIn: HEALTH_SYNC_TOKEN_TTL,
+  });
+  return { token, expiresAt: new Date(jwt.decode(token).exp * 1000) };
 }
 
 /** Returns the token payload, or throws a jsonwebtoken error if it is invalid or expired. */

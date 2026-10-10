@@ -28,6 +28,7 @@ model User {
   foodEntries     FoodEntry[]
   weightEntries   WeightEntry[]
   sleepSchedule   SleepSchedule?
+  activityEntries ActivityEntry[]
 
   @@map("users")
 }
@@ -77,4 +78,27 @@ model SleepSchedule {
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@map("sleep_schedules")
+}
+
+/// Synced rows hold one day's totals per source, keyed by `syncDay` (the device's calendar
+/// date); `date` is noon UTC of that day. Manual rows are individual workouts with a null
+/// `syncDay`, which Postgres treats as distinct, so they never collide in the unique key.
+model ActivityEntry {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date            DateTime  @default(now()) @db.Timestamptz(3)
+  syncDay         DateTime? @map("sync_day") @db.Date
+  steps           Int       @default(0)
+  activeCalories  Int       @default(0) @map("active_calories")
+  distanceKm      Float?    @default(0.0) @map("distance_km")
+  exerciseType    String?   @map("exercise_type") @db.VarChar(60)
+  durationMinutes Int?      @map("duration_minutes")
+  source          String    @default("manual") @db.VarChar(20)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([userId, source, syncDay])
+  @@index([userId, date])
+  @@map("activity_entries")
 }

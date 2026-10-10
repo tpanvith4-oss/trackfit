@@ -16,8 +16,21 @@ import { WindDownTimeline } from './WindDownTimeline.jsx';
 
 export function SleepPanel() {
   const { user } = useAuth();
-  const { schedule, loading, loadError, reload, saveState, retrySave, updateSchedule, snoozeUntil, cancelSnooze, testAlarm } =
-    useSleep();
+  const {
+    schedule,
+    loading,
+    loadError,
+    reload,
+    saveState,
+    retrySave,
+    updateSchedule,
+    alarmArmed,
+    armAlarm,
+    snoozeUntil,
+    cancelSnooze,
+    testAlarm,
+    nativeAlarm,
+  } = useSleep();
   const [shuffleOpen, setShuffleOpen] = useState(false);
   const today = useNow(60_000);
 
@@ -55,10 +68,13 @@ export function SleepPanel() {
 
       <AlarmSettingsCard
         schedule={schedule}
+        armed={alarmArmed}
+        onArm={armAlarm}
         onChange={updateSchedule}
         snoozeUntil={snoozeUntil}
         onCancelSnooze={cancelSnooze}
         onTest={testAlarm}
+        nativeAlarm={nativeAlarm}
       />
 
       <Card title="Morning checklist" subtitle={formatDay(today)}>

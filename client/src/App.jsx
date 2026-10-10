@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { AppHeader } from './components/AppHeader.jsx';
-import { MoonIcon, ScaleIcon, UtensilsIcon } from './components/icons.jsx';
+import { ActivityIcon, MoonIcon, ScaleIcon, UtensilsIcon } from './components/icons.jsx';
 import { TabBar } from './components/TabBar.jsx';
 import { WelcomeToast } from './components/WelcomeToast.jsx';
 import { useAuth } from './context/AuthContext.jsx';
+import { ActivityPanel } from './features/activity/ActivityPanel.jsx';
 import { AuthModal } from './features/auth/AuthModal.jsx';
 import { LogFoodPanel } from './features/food/LogFoodPanel.jsx';
 import { SleepProvider } from './features/sleep/SleepContext.jsx';
@@ -14,6 +15,7 @@ import { useApiHealth } from './hooks/useApiHealth.js';
 const TABS = [
   { id: 'food', label: 'Log Food', Icon: UtensilsIcon, Panel: LogFoodPanel },
   { id: 'weight', label: 'Log Weight', Icon: ScaleIcon, Panel: LogWeightPanel },
+  { id: 'activity', label: 'Activity', Icon: ActivityIcon, Panel: ActivityPanel },
   { id: 'sleep', label: 'Sleep', Icon: MoonIcon, Panel: SleepPanel },
 ];
 

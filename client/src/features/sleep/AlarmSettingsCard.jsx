@@ -12,7 +12,64 @@ const CHALLENGES = [
   { id: 'shake', label: 'Shake', description: `${SHAKE_TARGET} shakes` },
 ];
 
-export function AlarmSettingsCard({ schedule, onChange, snoozeUntil, onCancelSnooze, onTest }) {
+const linkButtonClass = 'shrink-0 text-xs font-semibold text-slate-300 underline-offset-2 hover:underline';
+
+function AlarmHint({ children, action, onAction }) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-xl border border-amber-400/25 bg-amber-400/5 px-3 py-2.5">
+      <p className="text-xs leading-relaxed text-amber-100/90">{children}</p>
+      {action && (
+        <button type="button" onClick={onAction} className={linkButtonClass}>
+          {action}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function AlarmDeliveryNote({ nativeAlarm, armed }) {
+  if (!nativeAlarm) {
+    return (
+      <p className="text-xs leading-relaxed text-slate-500">
+        The alarm rings from inside TrackFit, so leave the app open on your nightstand (ideally plugged in) overnight.
+      </p>
+    );
+  }
+
+  const { permissions, error, requestPermission, openExactAlarmSettings } = nativeAlarm;
+  if (!armed || !permissions) return null;
+
+  if (permissions.notifications !== 'granted') {
+    return permissions.notifications === 'prompt' ? (
+      <AlarmHint action="Allow" onAction={requestPermission}>
+        Allow notifications so the alarm can ring while TrackFit is closed.
+      </AlarmHint>
+    ) : (
+      <AlarmHint>
+        Notifications are blocked, so the alarm only rings while TrackFit is open. Turn them on in Android Settings › Apps ›
+        TrackFit › Notifications.
+      </AlarmHint>
+    );
+  }
+  if (error) {
+    return <AlarmHint>Couldn’t schedule the alarm on this phone, so it only rings while TrackFit is open.</AlarmHint>;
+  }
+  if (permissions.exactAlarms !== 'granted') {
+    return (
+      <AlarmHint action="Allow" onAction={openExactAlarmSettings}>
+        “Alarms &amp; reminders” is off for TrackFit, so Android may ring a few minutes late.
+      </AlarmHint>
+    );
+  }
+  return (
+    <p className="text-xs leading-relaxed text-slate-500">
+      Rings even when TrackFit is closed, then repeats every 2 minutes until you solve the challenge in the app. Do Not
+      Disturb and a muted notification volume can silence it.
+    </p>
+  );
+}
+
+export function AlarmSettingsCard({ schedule, armed, onArm, onChange, snoozeUntil, onCancelSnooze, onTest, nativeAlarm }) {
   const id = useId();
   const now = useNow(30_000);
   const { enableCognitiveAlarm, alarmChallengeType, targetWakeTime } = schedule;
@@ -59,22 +116,27 @@ export function AlarmSettingsCard({ schedule, onChange, snoozeUntil, onCancelSno
           {snoozeUntil ? (
             <div className="flex items-center justify-between gap-3">
               <span className="text-amber-200">Snoozed until {formatTime(snoozeUntil)}</span>
-              <button type="button" onClick={onCancelSnooze} className="text-xs font-semibold text-slate-300 underline-offset-2 hover:underline">
+              <button type="button" onClick={onCancelSnooze} className={linkButtonClass}>
                 Cancel snooze
               </button>
             </div>
-          ) : enableCognitiveAlarm ? (
+          ) : !enableCognitiveAlarm ? (
+            <span className="text-slate-500">Alarm is off.</span>
+          ) : armed ? (
             <span className="text-slate-300">
               Rings in <span className="font-semibold text-slate-50">{formatDuration(nextAlarmAt - now)}</span>
             </span>
           ) : (
-            <span className="text-slate-500">Alarm is off.</span>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-slate-400">Not set yet</span>
+              <button type="button" onClick={onArm} className={linkButtonClass}>
+                Set for {formatClockLabel(targetWakeTime)}
+              </button>
+            </div>
           )}
         </div>
 
-        <p className="text-xs leading-relaxed text-slate-500">
-          The alarm rings from inside TrackFit, so leave the app open on your nightstand (ideally plugged in) overnight.
-        </p>
+        {enableCognitiveAlarm && <AlarmDeliveryNote nativeAlarm={nativeAlarm} armed={armed} />}
 
         <Button variant="ghost" className="w-full border border-slate-700" onClick={onTest}>
           Test alarm now

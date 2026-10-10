@@ -35,7 +35,7 @@ function IntensityMeter({ stage }) {
  * Full-screen wake-up alarm. Sound and haptics escalate until a cognitive challenge is
  * solved; only then can it be snoozed or dismissed. Dismissing opens the wake checklist.
  */
-export function SmartAlarmModal({ challengeType, isTest, user, onSnooze, onClose }) {
+export function SmartAlarmModal({ challengeType, isTest, user, onSnooze, onDismiss, onClose }) {
   const id = useId();
   const [phase, setPhase] = useState('ringing');
   const [stage, setStage] = useState(0);
@@ -112,7 +112,15 @@ export function SmartAlarmModal({ challengeType, isTest, user, onSnooze, onClose
               <Button variant="ghost" className="border border-slate-700 py-3" disabled={!solved} onClick={onSnooze}>
                 Snooze 9 min
               </Button>
-              <Button ref={dismissRef} className="py-3" disabled={!solved} onClick={() => setPhase('checklist')}>
+              <Button
+                ref={dismissRef}
+                className="py-3"
+                disabled={!solved}
+                onClick={() => {
+                  onDismiss();
+                  setPhase('checklist');
+                }}
+              >
                 Dismiss
               </Button>
             </div>

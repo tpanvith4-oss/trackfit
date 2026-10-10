@@ -2,7 +2,8 @@ import { getAuthToken } from './authSession.js';
 
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000').replace(/\/+$/, '');
 
-const DEFAULT_TIMEOUT_MS = 10_000;
+// Render holds requests while a sleeping instance boots (up to about a minute), so give up later than that.
+const DEFAULT_TIMEOUT_MS = 70_000;
 
 export class ApiError extends Error {
   constructor(message, { status = 0, details, cause } = {}) {

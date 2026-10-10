@@ -8,10 +8,13 @@ import { notFound } from './middleware/notFound.js';
 import apiRouter from './routes/index.js';
 import { HttpError } from './utils/HttpError.js';
 
+// Origins of the Capacitor WebView (Android https/http schemes, iOS), i.e. the TrackFit app itself.
+const NATIVE_APP_ORIGINS = ['https://localhost', 'http://localhost', 'capacitor://localhost'];
+
 const corsOptions = {
   origin(origin, callback) {
     // Requests without an Origin header (curl, native HTTP, same-origin) are always allowed.
-    if (!origin || env.corsOrigins.length === 0 || env.corsOrigins.includes(origin)) {
+    if (!origin || env.corsOrigins.length === 0 || env.corsOrigins.includes(origin) || NATIVE_APP_ORIGINS.includes(origin)) {
       callback(null, true);
       return;
     }
