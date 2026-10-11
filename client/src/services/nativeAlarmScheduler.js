@@ -118,3 +118,6 @@ export function syncNativeAlarms(series) {
   syncChain = syncChain.catch(() => {}).then(run);
   return syncChain;
 }
+
+/** Cancels every pending TrackFit wake, repeat and snooze notification. */
+export const cancelWakeAlarm = () => syncNativeAlarms([]);

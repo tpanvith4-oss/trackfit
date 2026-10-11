@@ -69,7 +69,15 @@ function describeSync(lastSync, hasEverSynced) {
   return hasEverSynced ? 'No sync yet today' : formatDay(new Date());
 }
 
-export function ActivitySummaryCard({ summary, now, hasEverSynced, onConnect, isLoading = false }) {
+export function ActivitySummaryCard({
+  summary,
+  now,
+  hasEverSynced,
+  onConnect,
+  isLoading = false,
+  isCached = false,
+  isRefreshing = false,
+}) {
   const { steps, activeCalories, distanceKm, lastSync } = summary;
   const showStepWarning = !isLoading && needsStepCompensation(steps, now);
 
@@ -85,6 +93,16 @@ export function ActivitySummaryCard({ summary, now, hasEverSynced, onConnect, is
       }
     >
       <div aria-busy={isLoading} className={`space-y-4 transition-opacity ${isLoading ? 'opacity-50' : ''}`}>
+        {isCached && (
+          <p
+            role="status"
+            className="flex items-center gap-2 rounded-xl border border-slate-700/70 bg-slate-800/40 px-3 py-2 text-xs text-slate-400"
+          >
+            <span aria-hidden className={`size-1.5 shrink-0 rounded-full bg-amber-400 ${isRefreshing ? 'motion-safe:animate-pulse' : ''}`} />
+            Cached from last sync{isRefreshing ? ' · refreshing…' : ''}
+          </p>
+        )}
+
         <div className="flex items-center gap-4">
           <StepRing steps={steps} goal={STEP_GOAL} />
           <div className="grid min-w-0 flex-1 gap-2">

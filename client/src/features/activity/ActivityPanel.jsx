@@ -4,9 +4,11 @@ import { RefreshIcon } from '../../components/icons.jsx';
 import { IconButton } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { ErrorMessage, ListSkeleton } from '../../components/ui/StatusMessage.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useAsyncData } from '../../hooks/useAsyncData.js';
 import { useNow } from '../../hooks/useNow.js';
 import { addDays, dayKey, startOfDay } from '../../utils/date.js';
+import { loadActivityCache, saveActivityCache } from './activityCache.js';
 import { ActivityHistory } from './ActivityHistory.jsx';
 import { ActivitySummaryCard } from './ActivitySummaryCard.jsx';
 import { entryDayKey, groupByDay, HISTORY_DAYS, MANUAL_SOURCE, summarizeDay } from './activityStats.js';
@@ -16,6 +18,7 @@ import { ManualActivityForm } from './ManualActivityForm.jsx';
 const byDateDesc = (a, b) => new Date(b.date) - new Date(a.date);
 
 export function ActivityPanel() {
+  const userId = useAuth().user.id;
   const now = useNow(60_000);
   const todayKey = dayKey(now);
   // A day of slack each side: synced totals sit at noon UTC, which can cross local midnight.
@@ -45,6 +48,22 @@ export function ActivityPanel() {
   }, [entries, now, todayKey]);
   const hasEverSynced = entries.some((entry) => entry.source !== MANUAL_SOURCE);
 
+  // Shown while the API is unreachable or Render is still waking, until the first response lands.
+  const [cached, setCached] = useState(null);
+  useEffect(() => {
+    let active = true;
+    loadActivityCache(userId, todayKey).then((next) => active && setCached(next));
+    return () => {
+      active = false;
+    };
+  }, [userId, todayKey]);
+
+  useEffect(() => {
+    if (data) saveActivityCache(userId, todayKey, { summary: today, hasEverSynced });
+  }, [data, userId, todayKey, today, hasEverSynced]);
+
+  const showCached = !data && Boolean(cached);
+
   const handleCreate = useCallback(
     async (payload) => {
       const created = await activityApi.logManual(payload);
@@ -72,11 +91,13 @@ export function ActivityPanel() {
   return (
     <div className="space-y-4">
       <ActivitySummaryCard
-        summary={today}
+        summary={showCached ? cached.summary : today}
         now={now}
-        hasEverSynced={hasEverSynced}
+        hasEverSynced={showCached ? cached.hasEverSynced : hasEverSynced}
         onConnect={() => setSyncOpen(true)}
-        isLoading={isInitialLoad}
+        isLoading={isInitialLoad && !showCached}
+        isCached={showCached}
+        isRefreshing={loading}
       />
 
       <Card title="Log a workout" subtitle="Gym sessions, treadmill runs, anything your phone missed">

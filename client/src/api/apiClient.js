@@ -16,7 +16,10 @@ export class ApiError extends Error {
 
 const unauthorizedListeners = new Set();
 
-/** Subscribes to 401 responses on authenticated requests. Returns an unsubscribe function. */
+/**
+ * Subscribes to 401 responses on authenticated requests; listeners get the error and the token
+ * the request carried. Returns an unsubscribe function.
+ */
 export function onUnauthorized(listener) {
   unauthorizedListeners.add(listener);
   return () => unauthorizedListeners.delete(listener);
@@ -60,9 +63,9 @@ async function request(
   const forwardAbort = () => controller.abort(signal.reason);
   signal?.addEventListener('abort', forwardAbort, { once: true });
 
-  const token = auth ? getAuthToken() : null;
-
   try {
+    const token = auth ? await getAuthToken() : null;
+
     const response = await fetch(buildUrl(path, query), {
       method,
       headers: {
@@ -80,7 +83,7 @@ async function request(
     if (!response.ok) {
       const apiError = toApiError(response, payload);
       if (response.status === 401 && token) {
-        unauthorizedListeners.forEach((listener) => listener(apiError));
+        unauthorizedListeners.forEach((listener) => listener(apiError, token));
       }
       throw apiError;
     }

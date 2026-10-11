@@ -1,53 +1,66 @@
+import { storage } from '../services/storageService.js';
+
 const TOKEN_KEY = 'trackfit.auth.token';
 const USER_KEY = 'trackfit.auth.user';
 
-function read(key) {
+function decodeJwtPayload(token) {
+  const parts = token.split('.');
+  if (parts.length !== 3 || parts.some((part) => !part)) return null;
   try {
-    return window.localStorage.getItem(key);
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(base64.padEnd(Math.ceil(base64.length / 4) * 4, '='));
+    const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, (char) => char.charCodeAt(0))));
+    return payload && typeof payload === 'object' ? payload : null;
   } catch {
     return null;
   }
 }
 
-function write(key, value) {
-  try {
-    if (value === null) window.localStorage.removeItem(key);
-    else window.localStorage.setItem(key, value);
-  } catch {
-    // Storage can be unavailable (private mode, quota); the in-memory session still works.
-  }
+/**
+ * Whether `token` looks like an unexpired session JWT for `userId`. Only the shape is checked
+ * here; the server still verifies the signature on every request.
+ */
+export function isUsableSessionToken(token, userId) {
+  if (typeof token !== 'string') return false;
+  const payload = decodeJwtPayload(token);
+  if (!payload || payload.userId !== userId) return false;
+  // Scoped tokens (iOS Shortcuts sync) are rejected by every session endpoint.
+  if (payload.scope) return false;
+  return typeof payload.exp !== 'number' || payload.exp * 1000 > Date.now();
 }
 
-let currentToken = read(TOKEN_KEY);
+const isProfile = (user) => Boolean(user) && typeof user === 'object' && typeof user.id === 'string';
 
-export const getAuthToken = () => currentToken;
-
-/** @returns {{ token: string, user: object } | null} */
-export function loadSession() {
-  currentToken = read(TOKEN_KEY);
-  if (!currentToken) return null;
-  try {
-    const user = JSON.parse(read(USER_KEY) ?? 'null');
-    return user && typeof user === 'object' ? { token: currentToken, user } : null;
-  } catch {
-    return null;
-  }
+/** The token requests should carry right now, read from storage so every tab and launch agrees. */
+export async function getAuthToken() {
+  const token = await storage.get(TOKEN_KEY);
+  return typeof token === 'string' && token ? token : null;
 }
 
-export function saveSession({ token, user }) {
-  currentToken = token;
-  write(TOKEN_KEY, token);
-  write(USER_KEY, JSON.stringify(user));
+/** @returns {Promise<{ token: string, user: object } | null>} */
+export async function loadSession() {
+  const [token, user] = await Promise.all([storage.get(TOKEN_KEY), storage.get(USER_KEY)]);
+  return isProfile(user) && isUsableSessionToken(token, user.id) ? { token, user } : null;
+}
+
+/** Like `loadSession`, but also clears a stored session that is expired or malformed. */
+export async function restoreSession() {
+  const session = await loadSession();
+  if (!session) await clearSession();
+  return session;
+}
+
+/** The profile carries the user's goals (calories, protein, weight range), so they persist with it. */
+export async function saveSession({ token, user }) {
+  await Promise.all([storage.set(TOKEN_KEY, token), storage.set(USER_KEY, user)]);
 }
 
 export function saveUser(user) {
-  write(USER_KEY, JSON.stringify(user));
+  return storage.set(USER_KEY, user);
 }
 
-export function clearSession() {
-  currentToken = null;
-  write(TOKEN_KEY, null);
-  write(USER_KEY, null);
+export async function clearSession() {
+  await Promise.all([storage.remove(TOKEN_KEY), storage.remove(USER_KEY)]);
 }
 
 export const isSessionStorageKey = (key) => key === TOKEN_KEY || key === USER_KEY;

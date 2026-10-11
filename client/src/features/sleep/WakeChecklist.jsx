@@ -3,12 +3,23 @@ import { CheckIcon } from '../../components/icons.jsx';
 import { loadWakeChecklist, saveWakeChecklist, subscribeWakeChecklist, WAKE_CHECKLIST_ITEMS } from './wakeChecklistStore.js';
 
 export function WakeChecklist({ userId }) {
-  const [checked, setChecked] = useState(() => loadWakeChecklist(userId));
+  const [checked, setChecked] = useState({});
 
-  useEffect(
-    () => subscribeWakeChecklist((changedUserId, next) => changedUserId === userId && setChecked(next)),
-    [userId],
-  );
+  useEffect(() => {
+    let touched = false;
+    const unsubscribe = subscribeWakeChecklist((changedUserId, next) => {
+      if (changedUserId !== userId) return;
+      touched = true;
+      setChecked(next);
+    });
+    loadWakeChecklist(userId).then((stored) => {
+      if (!touched) setChecked(stored);
+    });
+    return () => {
+      touched = true;
+      unsubscribe();
+    };
+  }, [userId]);
 
   const toggle = (itemId) => saveWakeChecklist(userId, { ...checked, [itemId]: !checked[itemId] });
 

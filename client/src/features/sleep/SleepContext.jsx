@@ -11,6 +11,7 @@ import {
   requestNativeAlarmPermissions,
   syncNativeAlarms,
 } from '../../services/nativeAlarmScheduler.js';
+import { storage } from '../../services/storageService.js';
 import * as brownNoise from './brownNoiseEngine.js';
 import { SmartAlarmModal } from './SmartAlarmModal.jsx';
 
@@ -24,21 +25,7 @@ const SleepContext = createContext(null);
 const cacheKey = (userId) => `trackfit.sleep.${userId}`;
 const alarmStateKey = (userId) => `trackfit.alarm.${userId}`;
 
-function readStored(key) {
-  try {
-    return JSON.parse(localStorage.getItem(key));
-  } catch {
-    return null;
-  }
-}
-
-function writeStored(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Without storage the alarm simply waits for the server copy on next launch.
-  }
-}
+const asObject = (value) => (value && typeof value === 'object' && !Array.isArray(value) ? value : null);
 
 /**
  * `armedFor` is the wake time the alarm was last armed for (null when off) and `armedAt`
@@ -70,12 +57,35 @@ function planNativeAlarms(wakeTime, alarmState, now) {
  * Owns the user's sleep schedule (cached locally so the alarm still knows the wake time
  * when the API is unreachable) and the alarm clock: it rings in-app over any tab and, on
  * Android, is mirrored into native notifications that fire even when TrackFit is closed.
+ * Renders nothing until both caches are read, so the alarm never acts on a blank state.
  */
 export function SleepProvider({ children }) {
   const { user } = useAuth();
   const userId = user.id;
+  const [stored, setStored] = useState(null);
 
-  const [schedule, setSchedule] = useState(() => readStored(cacheKey(userId)));
+  useEffect(() => {
+    let active = true;
+    Promise.all([storage.get(cacheKey(userId)), storage.get(alarmStateKey(userId))]).then(([schedule, alarmState]) => {
+      if (active) setStored({ userId, schedule: asObject(schedule), alarmState: asObject(alarmState) });
+    });
+    return () => {
+      active = false;
+    };
+  }, [userId]);
+
+  if (stored?.userId !== userId) return null;
+  return (
+    <SleepStateProvider user={user} initialSchedule={stored.schedule} initialAlarmState={stored.alarmState}>
+      {children}
+    </SleepStateProvider>
+  );
+}
+
+function SleepStateProvider({ user, initialSchedule, initialAlarmState, children }) {
+  const userId = user.id;
+
+  const [schedule, setSchedule] = useState(initialSchedule);
   const [loadState, setLoadState] = useState({ loading: true, error: null });
   const [saveState, setSaveState] = useState({ status: 'idle', error: null });
   const [reloadToken, setReloadToken] = useState(0);
@@ -90,7 +100,7 @@ export function SleepProvider({ children }) {
     (next) => {
       latestRef.current = next;
       setSchedule(next);
-      writeStored(cacheKey(userId), next);
+      storage.set(cacheKey(userId), next);
     },
     [userId],
   );
@@ -148,19 +158,16 @@ export function SleepProvider({ children }) {
     return () => {
       aliveRef.current = false;
       brownNoise.stop();
-      // Signing out must not leave this account's alarms ringing on the device.
-      if (NATIVE_ALARMS) syncNativeAlarms([]).catch(() => {});
     };
   }, []);
 
   const [alarm, setAlarm] = useState(null);
-  const [alarmState, setAlarmState] = useState(() => ({
-    ...INITIAL_ALARM_STATE,
-    ...readStored(alarmStateKey(userId)),
-  }));
+  const [alarmState, setAlarmState] = useState(() => ({ ...INITIAL_ALARM_STATE, ...initialAlarmState }));
   const updateAlarmState = useCallback((patch) => setAlarmState((state) => ({ ...state, ...patch })), []);
 
-  useEffect(() => writeStored(alarmStateKey(userId), alarmState), [userId, alarmState]);
+  useEffect(() => {
+    storage.set(alarmStateKey(userId), alarmState);
+  }, [userId, alarmState]);
 
   // Default schedules never ring: the alarm arms once the user has saved a schedule.
   const alarmArmed = Boolean(schedule?.enableCognitiveAlarm && schedule?.updatedAt);

@@ -40,8 +40,11 @@ function Dashboard() {
 }
 
 export default function App() {
-  const { user, isAuthenticated, authEvent, logout } = useAuth();
+  const { user, isAuthenticated, isReady, authEvent, logout } = useAuth();
   const apiStatus = useApiHealth();
+
+  // Blank until the stored session is read, so a signed-in user never sees the login screen flash.
+  if (!isReady) return <div className="min-h-full" aria-busy="true" />;
 
   return (
     <div className="flex min-h-full flex-col">
