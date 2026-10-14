@@ -66,6 +66,10 @@ export const manualActivitySchema = z.object({
     .date()
     .refine((date) => date.getTime() <= Date.now() + 5 * 60_000, 'Workouts can’t be logged in the future')
     .optional(),
+  clientId: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{8,64}$/, 'clientId must be 8–64 letters, digits, "-" or "_"')
+    .optional(),
 });
 
 /** A bare `endDate` day is inclusive, so it becomes the following midnight (UTC). */

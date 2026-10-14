@@ -21,7 +21,7 @@ export const QUICK_STAPLES = [
     name: 'Protein Oats + Milk + Whey + Seeds',
     mealType: 'BREAKFAST',
     calories: 650,
-    proteinG: 47,
+    proteinG: 42,
     carbsG: 55,
     fatG: 25,
   },

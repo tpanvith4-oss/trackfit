@@ -9,11 +9,24 @@ function WorkoutRow({ workout, onDelete, deleting }) {
   return (
     <li className="flex items-center gap-2 rounded-lg bg-slate-800/50 py-1.5 pr-1 pl-3">
       <span className="min-w-0 flex-1 truncate text-sm text-slate-200">{workout.exerciseType}</span>
+      {workout.pending && (
+        <span
+          title="Saved on this device, waiting to sync"
+          className="shrink-0 rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-amber-300 uppercase"
+        >
+          Pending
+        </span>
+      )}
       <span className="shrink-0 text-xs tabular-nums text-slate-400">
         {workout.durationMinutes} min · {formatNumber(workout.activeCalories)} kcal
         {workout.distanceKm ? ` · ${formatFixed(workout.distanceKm)} km` : ''}
       </span>
-      <IconButton label={`Delete ${workout.exerciseType}`} onClick={() => onDelete(workout.id)} disabled={deleting} className="size-8">
+      <IconButton
+        label={`${workout.pending ? 'Discard unsynced' : 'Delete'} ${workout.exerciseType}`}
+        onClick={() => onDelete(workout.id)}
+        disabled={deleting}
+        className="size-8"
+      >
         <TrashIcon className="size-4" />
       </IconButton>
     </li>

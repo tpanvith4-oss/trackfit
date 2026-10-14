@@ -95,10 +95,13 @@ model ActivityEntry {
   exerciseType    String?   @map("exercise_type") @db.VarChar(60)
   durationMinutes Int?      @map("duration_minutes")
   source          String    @default("manual") @db.VarChar(20)
+  /// Idempotency key from the client, so a retried manual log returns the entry it already created.
+  clientId        String?   @map("client_id") @db.VarChar(64)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@unique([userId, source, syncDay])
+  @@unique([userId, clientId])
   @@index([userId, date])
   @@map("activity_entries")
 }

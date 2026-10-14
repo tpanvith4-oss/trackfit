@@ -104,6 +104,8 @@ async function request(
 }
 
 export const apiClient = {
+  /** Any method, e.g. for replaying a stored request: `request(path, { method, body, ... })`. */
+  request: (path, options) => request(path, options),
   get: (path, options) => request(path, { ...options, method: 'GET' }),
   post: (path, body, options) => request(path, { ...options, method: 'POST', body }),
   put: (path, body, options) => request(path, { ...options, method: 'PUT', body }),

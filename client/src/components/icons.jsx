@@ -159,6 +159,14 @@ export const ThermometerIcon = (props) => (
   </svg>
 );
 
+export const CloudOffIcon = (props) => (
+  <svg {...base} {...props}>
+    <path d="m2 2 20 20" />
+    <path d="M5.78 5.78A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.31-.2" />
+    <path d="M21.53 16.05A4.5 4.5 0 0 0 17.5 10h-1.79A7 7 0 0 0 9.97 5.06" />
+  </svg>
+);
+
 export const SmartphoneIcon = (props) => (
   <svg {...base} {...props}>
     <rect x="5" y="2" width="14" height="20" rx="2" />
