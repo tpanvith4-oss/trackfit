@@ -78,7 +78,7 @@ const grams = z.coerce.number().finite().transform((value) => roundTo1(clamp(val
 // The model's output is untrusted input: non-numeric or missing fields are rejected, numbers are clamped and rounded.
 const modelOutputSchema = z.object({
   mealTitle: clippedText(120).catch(''),
-  suggestedMealType: z.enum(AI_MEAL_TYPES).catch('snack'),
+  suggestedMealType: z.enum(AI_MEAL_TYPES).catch('lunch'),
   items: z
     .array(
       z.object({
@@ -92,6 +92,23 @@ const modelOutputSchema = z.object({
     )
     .max(MAX_ITEMS),
 });
+
+// Gemini 3.x sometimes ignores the schema's key names (serving_size, protein_g, carbohydrates_g, fat_g),
+// so map known aliases onto the canonical keys before validation.
+function normalizeModelOutput(raw) {
+  return {
+    mealTitle: raw?.mealTitle ?? '',
+    suggestedMealType: raw?.suggestedMealType ?? 'lunch',
+    items: (Array.isArray(raw?.items) ? raw.items : []).filter((item) => item?.name).map((item) => ({
+      name: item?.name,
+      quantity: item?.serving_size || item?.quantity || '1 serving',
+      calories: Number(item?.calories) || 0,
+      protein: Number(item?.protein_g ?? item?.protein ?? 0),
+      carbs: Number(item?.carbohydrates_g ?? item?.carbs ?? 0),
+      fat: Number(item?.fat_g ?? item?.fat ?? 0),
+    })),
+  };
+}
 
 const recentRequests = new Map();
 
@@ -179,7 +196,7 @@ export async function estimateMeal(userId, { description, localTime }) {
   try {
     const response = await generate(buildPrompt(description, localTime));
     if (!response.text) throw new HttpError(422, 'Couldn’t estimate that description. Try rephrasing it.');
-    parsed = modelOutputSchema.parse(JSON.parse(response.text));
+    parsed = modelOutputSchema.parse(normalizeModelOutput(JSON.parse(response.text.trim())));
   } catch (err) {
     throw toHttpError(err);
   }
@@ -190,7 +207,7 @@ export async function estimateMeal(userId, { description, localTime }) {
 
   const sum = (field) => parsed.items.reduce((total, item) => total + item[field], 0);
   return {
-    mealTitle: parsed.mealTitle || parsed.items.map((item) => item.name).join(', ').slice(0, 120),
+    mealTitle: parsed.mealTitle || parsed.items.map((item) => item.name).join(', ').slice(0, 120) || 'Logged Meal',
     suggestedMealType: parsed.suggestedMealType,
     items: parsed.items,
     totalCalories: Math.round(sum('calories')),

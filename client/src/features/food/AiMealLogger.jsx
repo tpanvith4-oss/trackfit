@@ -135,7 +135,7 @@ export function AiMealLogger({ onEstimate, disabled = false }) {
       {isEstimating && (
         <p role="status" className="flex items-center gap-2 px-1 text-xs text-slate-400">
           <SpinnerIcon className="size-3.5 text-brand-400" />
-          Analyzing nutritional data...
+          Analyzing Macros...
         </p>
       )}
       <ErrorMessage error={error} />

@@ -13,7 +13,7 @@ export async function create(req, res) {
 
 export async function aiParse(req, res) {
   const estimate = await estimateMeal(req.userId, req.validated.body);
-  res.json({ data: estimate });
+  res.json({ success: true, data: estimate });
 }
 
 export async function remove(req, res) {
