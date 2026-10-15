@@ -1,5 +1,6 @@
 import { getApiStatusStyle } from './apiStatus.js';
 import { ProfileMenu } from './ProfileMenu.jsx';
+import { ThemeToggle } from './ThemeToggle.jsx';
 
 export function AppHeader({ apiStatus, user, onLogout }) {
   const status = getApiStatusStyle(apiStatus);
@@ -10,14 +11,17 @@ export function AppHeader({ apiStatus, user, onLogout }) {
         <h1 className="text-lg font-bold tracking-tight">
           Track<span className="text-brand-400">Fit</span>
         </h1>
-        {user ? (
-          <ProfileMenu user={user} apiStatus={apiStatus} onLogout={onLogout} />
-        ) : (
-          <span className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-xs text-slate-300">
-            <span className={`size-2 rounded-full ${status.dot}`} />
-            {status.label}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          {user ? (
+            <ProfileMenu user={user} apiStatus={apiStatus} onLogout={onLogout} />
+          ) : (
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-xs text-slate-300">
+              <span className={`size-2 rounded-full ${status.dot}`} />
+              {status.label}
+            </span>
+          )}
+        </div>
       </div>
     </header>
   );

@@ -54,6 +54,10 @@ export const env = Object.freeze({
   corsOrigins: parseList(process.env.CORS_ORIGINS),
   jwtSecret: resolveJwtSecret(),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN?.trim() || '30d',
+  // Optional: without a key the API still runs and only the AI meal estimator is unavailable.
+  geminiApiKey: process.env.GEMINI_API_KEY?.trim() || null,
+  // gemini-2.5-flash is closed to API keys created after its deprecation; older keys can still opt into it.
+  geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash',
 });
 
 export const isProduction = nodeEnv === 'production';

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta
@@ -8,6 +8,16 @@
     />
     <meta name="theme-color" content="#0f172a" />
     <meta name="color-scheme" content="dark" />
+    <script>
+      // Runs before first paint so a saved light theme doesn't flash dark. Mirrors src/theme.js.
+      try {
+        if (localStorage.getItem('trackfit-theme') === 'light') {
+          document.documentElement.dataset.theme = 'light';
+          document.querySelector('meta[name="theme-color"]').content = '#f1f5f9';
+          document.querySelector('meta[name="color-scheme"]').content = 'light';
+        }
+      } catch {}
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>TrackFit</title>
   </head>

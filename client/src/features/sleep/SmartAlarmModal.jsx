@@ -76,6 +76,7 @@ export function SmartAlarmModal({ challengeType, isTest, user, onSnooze, onDismi
       aria-modal="true"
       aria-labelledby={`${id}-title`}
       onPointerDown={unblockSound}
+      data-theme="dark"
       className="fixed inset-0 z-50 overflow-y-auto bg-slate-950 bg-linear-to-b from-slate-950 via-slate-950 to-amber-950 px-5 pt-[calc(2rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] motion-safe:animate-fade-in"
     >
       <div className="mx-auto flex min-h-full w-full max-w-sm flex-col">

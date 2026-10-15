@@ -86,7 +86,7 @@ export function LogFoodPanel() {
     <div className="space-y-4">
       <MacroCard totals={totals} targets={targets} isLoading={isInitialLoad} />
 
-      <Card title="Log a meal" subtitle="Tap a staple to pre-fill, then tweak anything">
+      <Card title="Log a meal" subtitle="Describe it for an AI estimate or tap a staple, then tweak anything">
         <MealForm onSubmit={handleCreate} />
       </Card>
 

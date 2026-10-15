@@ -70,7 +70,7 @@ export function SleepScheduleCard({ schedule, onChange, saveState, onRetrySave }
             required
             value={targetWakeTime}
             onChange={(event) => isClockTime(event.target.value) && onChange({ targetWakeTime: event.target.value })}
-            className="text-lg font-semibold tabular-nums [color-scheme:dark]"
+            className="text-lg font-semibold tabular-nums"
           />
         </Field>
 

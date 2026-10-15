@@ -49,6 +49,7 @@ export function CognitiveShuffleModal({ onClose }) {
       role="dialog"
       aria-modal="true"
       aria-labelledby={`${id}-title`}
+      data-theme="dark"
       className="fixed inset-0 z-50 flex flex-col bg-black px-6 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))] motion-safe:animate-fade-in"
     >
       <div className="flex items-center justify-between">

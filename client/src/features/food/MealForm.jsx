@@ -3,6 +3,7 @@ import { SpinnerIcon } from '../../components/icons.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Field, Input, Select } from '../../components/ui/Field.jsx';
 import { ErrorMessage } from '../../components/ui/StatusMessage.jsx';
+import { AiMealLogger } from './AiMealLogger.jsx';
 import { MEAL_TYPES, QUICK_STAPLES } from './constants.js';
 import { getMealTypeByCurrentTime } from './mealTime.js';
 
@@ -22,6 +23,10 @@ const createInitialForm = () => ({
 });
 
 const toMacroGrams = (value) => parseFloat(value) || 0;
+
+const AI_MEAL_TYPES = { breakfast: 'BREAKFAST', lunch: 'LUNCH', dinner: 'DINNER', snack: 'SNACK' };
+const MAX_CALORIES = 10_000;
+const MAX_MACRO_G = 1_000;
 
 function PresetChips({ activePresetId, disabled, onSelect }) {
   return (
@@ -63,6 +68,7 @@ export function MealForm({ onSubmit }) {
   const [activePresetId, setActivePresetId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [aiResetKey, setAiResetKey] = useState(0);
   const submittingRef = useRef(false);
 
   const update = (field) => (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -77,6 +83,19 @@ export function MealForm({ onSubmit }) {
       fatG: String(preset.fatG),
     });
     setActivePresetId(preset.id);
+    setError(null);
+  };
+
+  const applyEstimate = (estimate) => {
+    setForm((prev) => ({
+      name: estimate.mealTitle.slice(0, 120),
+      mealType: AI_MEAL_TYPES[estimate.suggestedMealType] ?? prev.mealType,
+      calories: String(Math.min(estimate.totalCalories, MAX_CALORIES)),
+      proteinG: String(Math.min(estimate.totalProtein, MAX_MACRO_G)),
+      carbsG: String(Math.min(estimate.totalCarbs, MAX_MACRO_G)),
+      fatG: String(Math.min(estimate.totalFat, MAX_MACRO_G)),
+    }));
+    setActivePresetId(null);
     setError(null);
   };
 
@@ -110,6 +129,7 @@ export function MealForm({ onSubmit }) {
       });
       setForm(createInitialForm());
       setActivePresetId(null);
+      setAiResetKey((key) => key + 1);
     } catch (err) {
       setError(err);
     } finally {
@@ -120,6 +140,7 @@ export function MealForm({ onSubmit }) {
 
   return (
     <div className="space-y-4">
+      <AiMealLogger key={aiResetKey} onEstimate={applyEstimate} disabled={isSubmitting} />
       <PresetChips activePresetId={activePresetId} disabled={isSubmitting} onSelect={applyPreset} />
 
       <form onSubmit={handleSubmit} className="space-y-3">

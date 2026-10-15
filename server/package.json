@@ -19,6 +19,7 @@
     "claim-legacy-data": "node scripts/claim-legacy-data.js"
   },
   "dependencies": {
+    "@google/genai": "^2.30.0",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
