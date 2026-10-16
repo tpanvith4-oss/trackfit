@@ -1,29 +1,18 @@
+import { MacroDonutChart } from '../../components/charts/MacroDonutChart.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { ProgressBar } from '../../components/ui/ProgressBar.jsx';
 import { formatDay } from '../../utils/date.js';
 import { formatNumber } from '../../utils/number.js';
 import { DAILY_TARGETS } from './constants.js';
 
-function MacroStat({ label, value }) {
-  return (
-    <div className="rounded-xl bg-slate-800/60 px-3 py-2.5">
-      <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="text-lg font-bold tabular-nums text-slate-100">
-        {formatNumber(value)}
-        <span className="ml-0.5 text-xs font-medium text-slate-400">g</span>
-      </p>
-    </div>
-  );
-}
-
-export function MacroCard({ totals, targets = DAILY_TARGETS, isLoading = false }) {
+export function MacroCard({ totals, targets = DAILY_TARGETS, isLoading = false, date = new Date(), title = 'Today' }) {
   const remainingKcal = Math.round(targets.calories - totals.calories);
   const isOverBudget = remainingKcal < 0;
   const proteinRemaining = targets.proteinG - totals.proteinG;
   const proteinMet = proteinRemaining <= 0;
 
   return (
-    <Card title="Today" subtitle={formatDay(new Date())}>
+    <Card title={title} subtitle={formatDay(date)}>
       <div aria-busy={isLoading} className={`space-y-4 transition-opacity ${isLoading ? 'opacity-50' : ''}`}>
         <div>
           <div className="flex items-end justify-between gap-3">
@@ -70,10 +59,7 @@ export function MacroCard({ totals, targets = DAILY_TARGETS, isLoading = false }
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <MacroStat label="Carbs" value={totals.carbsG} />
-          <MacroStat label="Fat" value={totals.fatG} />
-        </div>
+        <MacroDonutChart protein={totals.proteinG} carbs={totals.carbsG} fat={totals.fatG} totalCalories={totals.calories} />
       </div>
     </Card>
   );

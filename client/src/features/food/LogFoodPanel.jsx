@@ -6,7 +6,8 @@ import { Card } from '../../components/ui/Card.jsx';
 import { ErrorMessage, ListSkeleton } from '../../components/ui/StatusMessage.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useAsyncData } from '../../hooks/useAsyncData.js';
-import { startOfToday, startOfTomorrow } from '../../utils/date.js';
+import { dateFromKey, getDayLabel, timestampForDay, todayKey } from '../../hooks/useSelectedDate.js';
+import { addDays } from '../../utils/date.js';
 import { getDailyTargets } from './constants.js';
 import { MacroCard } from './MacroCard.jsx';
 import { MealForm } from './MealForm.jsx';
@@ -16,11 +17,15 @@ const sumBy = (entries, field) => entries.reduce((total, entry) => total + (Numb
 
 const createOptimisticId = () => `optimistic-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-export function LogFoodPanel() {
+export function LogFoodPanel({ selectedDate = todayKey() }) {
   const { user } = useAuth();
   const targets = useMemo(() => getDailyTargets(user), [user]);
-  const { data, error, loading, reload, setData } = useAsyncData((signal) =>
-    foodApi.list({ from: startOfToday(), to: startOfTomorrow(), limit: 200 }, { signal }),
+  const { data, error, loading, reload, setData } = useAsyncData(
+    (signal) => {
+      const dayStart = dateFromKey(selectedDate);
+      return foodApi.list({ from: dayStart, to: addDays(dayStart, 1), limit: 200 }, { signal });
+    },
+    [selectedDate],
   );
   const [deletingIds, setDeletingIds] = useState(() => new Set());
   const [deleteError, setDeleteError] = useState(null);
@@ -37,9 +42,10 @@ export function LogFoodPanel() {
   );
 
   const handleCreate = useCallback(
-    async (payload) => {
+    async (formValues) => {
+      const payload = { ...formValues, loggedAt: timestampForDay(selectedDate).toISOString() };
       const optimisticId = createOptimisticId();
-      const optimisticEntry = { ...payload, id: optimisticId, loggedAt: new Date().toISOString(), isPending: true };
+      const optimisticEntry = { ...payload, id: optimisticId, isPending: true };
       setData((prev) => [optimisticEntry, ...(prev ?? [])]);
 
       try {
@@ -53,7 +59,7 @@ export function LogFoodPanel() {
         throw err;
       }
     },
-    [setData],
+    [setData, selectedDate],
   );
 
   const handleDelete = useCallback(
@@ -84,14 +90,17 @@ export function LogFoodPanel() {
 
   return (
     <div className="space-y-4">
-      <MacroCard totals={totals} targets={targets} isLoading={isInitialLoad} />
+      <MacroCard totals={totals} targets={targets} isLoading={isInitialLoad} date={dateFromKey(selectedDate)} title={getDayLabel(selectedDate)} />
 
-      <Card title="Log a meal" subtitle="Describe it for an AI estimate or tap a staple, then tweak anything">
+      <Card
+        title={selectedDate === todayKey() ? 'Log a meal' : `Log a meal for ${getDayLabel(selectedDate)}`}
+        subtitle="Describe it for an AI estimate or tap a staple, then tweak anything"
+      >
         <MealForm onSubmit={handleCreate} />
       </Card>
 
       <Card
-        title="Today's meals"
+        title={selectedDate === todayKey() ? "Today's meals" : `Meals · ${getDayLabel(selectedDate)}`}
         action={
           <IconButton label="Refresh" onClick={reload} disabled={loading}>
             <RefreshIcon className={`size-4 ${loading ? 'animate-spin' : ''}`} />

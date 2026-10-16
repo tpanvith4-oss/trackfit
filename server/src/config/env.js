@@ -58,6 +58,10 @@ export const env = Object.freeze({
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() || null,
   // gemini-2.5-flash is closed to API keys created after its deprecation; older keys can still opt into it.
   geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash',
+  // Optional OpenAI-compatible fallback (NVIDIA NIM). Used when Gemini is unset or the Gemini call fails.
+  nvidiaApiKey: process.env.NVIDIA_API_KEY?.trim() || null,
+  nvidiaModel: process.env.NVIDIA_MODEL?.trim() || 'nvidia/llama-3.1-nemotron-70b-instruct',
+  nvidiaBaseUrl: process.env.NVIDIA_BASE_URL?.trim() || 'https://integrate.api.nvidia.com/v1',
 });
 
 export const isProduction = nodeEnv === 'production';

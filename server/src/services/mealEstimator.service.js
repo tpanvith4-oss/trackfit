@@ -1,5 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import { ApiError, GoogleGenAI, ThinkingLevel, Type } from '@google/genai';
+import OpenAI from 'openai';
 import { z } from 'zod';
 import { env } from '../config/env.js';
 import { HttpError } from '../utils/HttpError.js';
@@ -96,18 +97,30 @@ const modelOutputSchema = z.object({
 // Gemini 3.x sometimes ignores the schema's key names (serving_size, protein_g, carbohydrates_g, fat_g),
 // so map known aliases onto the canonical keys before validation.
 function normalizeModelOutput(raw) {
+  const mealType = raw?.suggestedMealType ?? raw?.suggested_meal_type ?? raw?.meal_type ?? 'lunch';
+  const items = Array.isArray(raw?.items) ? raw.items : [];
   return {
-    mealTitle: raw?.mealTitle ?? '',
-    suggestedMealType: raw?.suggestedMealType ?? 'lunch',
-    items: (Array.isArray(raw?.items) ? raw.items : []).filter((item) => item?.name).map((item) => ({
+    mealTitle: raw?.mealTitle ?? raw?.meal_title ?? '',
+    suggestedMealType: typeof mealType === 'string' ? mealType.trim().toLowerCase() : 'lunch',
+    items: items.filter((item) => item?.name).map((item) => ({
       name: item?.name,
-      quantity: item?.serving_size || item?.quantity || '1 serving',
-      calories: Number(item?.calories) || 0,
+      quantity: item?.serving_size || item?.servingSize || item?.quantity || '1 serving',
+      calories: Number(item?.calories ?? item?.kcal) || 0,
       protein: Number(item?.protein_g ?? item?.protein ?? 0),
-      carbs: Number(item?.carbohydrates_g ?? item?.carbs ?? 0),
+      carbs: Number(item?.carbohydrates_g ?? item?.carbs_g ?? item?.carbs ?? 0),
       fat: Number(item?.fat_g ?? item?.fat ?? 0),
     })),
   };
+}
+
+/** Models often wrap JSON in prose or a ```json fence. Pull out the object. */
+function extractJson(text) {
+  const fenced = text.trim().match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const body = (fenced?.[1] ?? text).trim();
+  const start = body.indexOf('{');
+  const end = body.lastIndexOf('}');
+  if (start === -1 || end <= start) throw new SyntaxError('Model did not return JSON');
+  return body.slice(start, end + 1);
 }
 
 const recentRequests = new Map();
@@ -123,6 +136,15 @@ function assertWithinRateLimit(userId, now = Date.now()) {
 
 let client = null;
 const getClient = () => (client ??= new GoogleGenAI({ apiKey: env.geminiApiKey }));
+
+let nvidiaClient = null;
+const getNvidia = () =>
+  (nvidiaClient ??= new OpenAI({
+    apiKey: env.nvidiaApiKey,
+    baseURL: env.nvidiaBaseUrl,
+    timeout: REQUEST_TIMEOUT_MS,
+    maxRetries: 1,
+  }));
 
 // Portion arithmetic doesn't need extended reasoning; keeping it minimal keeps estimates fast.
 function thinkingConfigFor(model) {
@@ -170,41 +192,54 @@ function buildPrompt(description, localTime) {
     .join('\n');
 }
 
-function toHttpError(err) {
+const NVIDIA_JSON_RULES = `Reply with one JSON object and no markdown. Keys:
+mealTitle (string), suggestedMealType ("breakfast"|"lunch"|"dinner"|"snack"),
+items (array of {name, quantity, calories, protein, carbs, fat}),
+totalCalories, totalProtein, totalCarbs, totalFat.`;
+
+function messageText(message) {
+  const content = message?.content;
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content.map((part) => (typeof part === 'string' ? part : part?.text || '')).join('');
+  }
+  return typeof message?.reasoning_content === 'string' ? message.reasoning_content : '';
+}
+
+async function generateNvidia(prompt) {
+  const completion = await getNvidia().chat.completions.create({
+    model: env.nvidiaModel,
+    temperature: 0.1,
+    top_p: 0.7,
+    max_tokens: 2048,
+    stream: false,
+    messages: [
+      { role: 'system', content: `${SYSTEM_INSTRUCTION}\n\n${NVIDIA_JSON_RULES}` },
+      { role: 'user', content: prompt },
+    ],
+  });
+  return messageText(completion.choices?.[0]?.message);
+}
+
+function toHttpError(err, provider) {
   if (err instanceof HttpError) return err;
-  if (err?.name === 'AbortError' || err?.name === 'TimeoutError') {
+  if (err?.name === 'AbortError' || err?.name === 'TimeoutError' || err?.name === 'APIConnectionTimeoutError') {
     return new HttpError(504, 'The AI estimator took too long. Try again.');
   }
-  console.error('[ai] Gemini request failed', err);
-  if (err instanceof ApiError && (err.status === 429 || err.status === 503)) {
+  console.error(`[ai] ${provider} request failed`, err);
+  const status = err?.status;
+  if (status === 429 || status === 503) {
     return new HttpError(503, 'The AI estimator is busy. Try again in a minute.');
   }
   return new HttpError(502, 'Couldn’t get an AI estimate right now. Try again or enter the values manually.');
 }
 
-/**
- * Estimates the nutrition of a free-text meal description with Gemini. Totals are recomputed
- * from the items so they always match the breakdown the user sees.
- */
-export async function estimateMeal(userId, { description, localTime }) {
-  if (!env.geminiApiKey) {
-    throw new HttpError(503, 'AI meal estimates aren’t configured on this server.');
-  }
-  assertWithinRateLimit(userId);
-
-  let parsed;
-  try {
-    const response = await generate(buildPrompt(description, localTime));
-    if (!response.text) throw new HttpError(422, 'Couldn’t estimate that description. Try rephrasing it.');
-    parsed = modelOutputSchema.parse(normalizeModelOutput(JSON.parse(response.text.trim())));
-  } catch (err) {
-    throw toHttpError(err);
-  }
-
+function parseEstimate(text) {
+  if (!text?.trim()) throw new HttpError(422, 'Couldn’t estimate that description. Try rephrasing it.');
+  const parsed = modelOutputSchema.parse(normalizeModelOutput(JSON.parse(extractJson(text))));
   if (parsed.items.length === 0) {
     throw new HttpError(422, 'No food found in that description. Try something like "2 rotis with dal".');
   }
-
   const sum = (field) => parsed.items.reduce((total, item) => total + item[field], 0);
   return {
     mealTitle: parsed.mealTitle || parsed.items.map((item) => item.name).join(', ').slice(0, 120) || 'Logged Meal',
@@ -215,4 +250,35 @@ export async function estimateMeal(userId, { description, localTime }) {
     totalCarbs: roundTo1(sum('carbs')),
     totalFat: roundTo1(sum('fat')),
   };
+}
+
+async function estimateWith(provider, prompt) {
+  try {
+    const text = provider === 'nvidia' ? await generateNvidia(prompt) : (await generate(prompt)).text;
+    return parseEstimate(text);
+  } catch (err) {
+    throw toHttpError(err, provider);
+  }
+}
+
+/**
+ * Estimates a free-text meal with Gemini, falling back to NVIDIA NIM when Gemini is
+ * unset or its call fails. Totals are recomputed from the items.
+ */
+export async function estimateMeal(userId, { description, localTime }) {
+  if (!env.geminiApiKey && !env.nvidiaApiKey) {
+    throw new HttpError(503, 'AI meal estimates aren’t configured on this server.');
+  }
+  assertWithinRateLimit(userId);
+
+  const prompt = buildPrompt(description, localTime);
+  if (!env.geminiApiKey) return estimateWith('nvidia', prompt);
+
+  try {
+    return await estimateWith('gemini', prompt);
+  } catch (err) {
+    if (!env.nvidiaApiKey) throw err;
+    console.warn(`[ai] Gemini failed (${err.status ?? 'error'}); falling back to NVIDIA NIM`);
+    return estimateWith('nvidia', prompt);
+  }
 }

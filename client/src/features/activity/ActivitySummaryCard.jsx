@@ -64,12 +64,13 @@ function StatTile({ Icon, label, value, unit, iconClassName }) {
   );
 }
 
-function describeSync(lastSync, hasEverSynced) {
+function describeSync(lastSync, hasEverSynced, day) {
   if (lastSync) return `Synced from ${SOURCE_LABELS[lastSync.source] ?? lastSync.source} at ${formatTime(lastSync.at)}`;
-  return hasEverSynced ? 'No sync yet today' : formatDay(new Date());
+  return hasEverSynced ? `No sync for ${formatDay(day)}` : formatDay(day);
 }
 
 export function ActivitySummaryCard({
+  title = "Today's activity",
   summary,
   now,
   hasEverSynced,
@@ -83,8 +84,8 @@ export function ActivitySummaryCard({
 
   return (
     <Card
-      title="Today's activity"
-      subtitle={describeSync(lastSync, hasEverSynced)}
+      title={title}
+      subtitle={describeSync(lastSync, hasEverSynced, now ?? new Date())}
       action={
         <Button variant="ghost" className="shrink-0 border border-slate-700 px-3 py-1.5 text-xs" onClick={onConnect}>
           <SmartphoneIcon className="size-4" />

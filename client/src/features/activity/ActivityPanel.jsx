@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { activityApi } from '../../api/activityApi.js';
+import { WeeklyStepsBarChart } from '../../components/charts/WeeklyStepsBarChart.jsx';
 import { CloudOffIcon, RefreshIcon } from '../../components/icons.jsx';
 import { IconButton } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
@@ -7,9 +8,10 @@ import { ErrorMessage, ListSkeleton } from '../../components/ui/StatusMessage.js
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useAsyncData } from '../../hooks/useAsyncData.js';
 import { useNow } from '../../hooks/useNow.js';
+import { dateFromKey, getDayLabel, shiftDayKey, timestampForDay } from '../../hooks/useSelectedDate.js';
 import { useSyncQueue } from '../../hooks/useSyncQueue.js';
 import { removeQueuedRequest } from '../../services/syncQueue.js';
-import { addDays, dayKey, startOfDay } from '../../utils/date.js';
+import { addDays, dayKey } from '../../utils/date.js';
 import { loadActivityCache, saveActivityCache } from './activityCache.js';
 import { ActivityHistory } from './ActivityHistory.jsx';
 import { ActivitySummaryCard } from './ActivitySummaryCard.jsx';
@@ -32,17 +34,21 @@ const toPendingWorkout = (item) => ({
   pending: true,
 });
 
-export function ActivityPanel() {
+const weekdayFormatter = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
+
+export function ActivityPanel({ selectedDate }) {
   const userId = useAuth().user.id;
   const now = useNow(60_000);
   const todayKey = dayKey(now);
+  const viewKey = selectedDate && selectedDate < todayKey ? selectedDate : todayKey;
+  const isViewingToday = viewKey === todayKey;
   // A day of slack each side: synced totals sit at noon UTC, which can cross local midnight.
   const { data, error, loading, reload, setData } = useAsyncData(
     (signal) => {
-      const today = startOfDay(new Date());
-      return activityApi.list({ startDate: addDays(today, -HISTORY_DAYS), endDate: addDays(today, 2) }, { signal });
+      const anchor = dateFromKey(viewKey);
+      return activityApi.list({ startDate: addDays(anchor, -HISTORY_DAYS), endDate: addDays(anchor, 2) }, { signal });
     },
-    [todayKey],
+    [viewKey],
   );
   const [syncOpen, setSyncOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
@@ -68,11 +74,20 @@ export function ActivityPanel() {
     return () => document.removeEventListener('visibilitychange', reloadWhenVisible);
   }, [reload]);
 
-  const today = useMemo(() => summarizeDay(entries.filter((entry) => entryDayKey(entry) === todayKey)), [entries, todayKey]);
+  const today = useMemo(() => summarizeDay(entries.filter((entry) => entryDayKey(entry) === viewKey)), [entries, viewKey]);
+  const allDays = useMemo(() => groupByDay(entries), [entries]);
   const days = useMemo(() => {
-    const oldestKey = dayKey(addDays(now, -(HISTORY_DAYS - 1)));
-    return groupByDay(entries).filter((day) => day.key >= oldestKey && day.key <= todayKey);
-  }, [entries, now, todayKey]);
+    const oldestKey = shiftDayKey(viewKey, -(HISTORY_DAYS - 1));
+    return allDays.filter((day) => day.key >= oldestKey && day.key <= viewKey);
+  }, [allDays, viewKey]);
+  const week = useMemo(() => {
+    const byKey = new Map(allDays.map((day) => [day.key, day]));
+    return Array.from({ length: 7 }, (_, index) => {
+      const key = shiftDayKey(viewKey, index - 6);
+      const day = byKey.get(key);
+      return { day: weekdayFormatter.format(dateFromKey(key)), label: getDayLabel(key), steps: day?.steps ?? 0, activeCalories: day?.activeCalories ?? 0 };
+    });
+  }, [allDays, viewKey]);
   const hasEverSynced = entries.some((entry) => entry.source !== MANUAL_SOURCE);
 
   // Shown while the API is unreachable or Render is still waking, until the first response lands.
@@ -86,17 +101,18 @@ export function ActivityPanel() {
   }, [userId, todayKey]);
 
   useEffect(() => {
-    if (data) saveActivityCache(userId, todayKey, { summary: today, hasEverSynced });
-  }, [data, userId, todayKey, today, hasEverSynced]);
+    if (data && isViewingToday) saveActivityCache(userId, todayKey, { summary: today, hasEverSynced });
+  }, [data, isViewingToday, userId, todayKey, today, hasEverSynced]);
 
-  const showCached = !data && Boolean(cached);
+  const showCached = isViewingToday && !data && Boolean(cached);
 
   const handleCreate = useCallback(
     async (payload) => {
-      const result = await activityApi.logManual(payload);
+      const entry = isViewingToday ? payload : { ...payload, date: timestampForDay(viewKey).toISOString() };
+      const result = await activityApi.logManual(entry);
       if (!result.queued) setData((prev) => [result.entry, ...(prev ?? [])].sort(byDateDesc));
     },
-    [setData],
+    [setData, isViewingToday, viewKey],
   );
 
   const handleDelete = async (id) => {
@@ -122,8 +138,9 @@ export function ActivityPanel() {
   return (
     <div className="space-y-4">
       <ActivitySummaryCard
+        title={isViewingToday ? "Today's activity" : `Activity · ${getDayLabel(viewKey)}`}
         summary={showCached ? cached.summary : today}
-        now={now}
+        now={isViewingToday ? now : dateFromKey(viewKey)}
         hasEverSynced={showCached ? cached.hasEverSynced : hasEverSynced}
         onConnect={() => setSyncOpen(true)}
         isLoading={isInitialLoad && !showCached}
@@ -131,7 +148,14 @@ export function ActivityPanel() {
         isRefreshing={loading}
       />
 
-      <Card title="Log a workout" subtitle="Gym sessions, treadmill runs, anything your phone missed">
+      <Card title="Weekly steps" subtitle="7 days ending on the selected day">
+        {isInitialLoad ? <div className="h-48 animate-pulse rounded-xl bg-slate-800/40" aria-busy="true" /> : <WeeklyStepsBarChart data={week} />}
+      </Card>
+
+      <Card
+        title={isViewingToday ? 'Log a workout' : `Log a workout for ${getDayLabel(viewKey)}`}
+        subtitle="Gym sessions, treadmill runs, anything your phone missed"
+      >
         <ManualActivityForm onSubmit={handleCreate} />
         {queue.items.length > 0 && (
           <p
