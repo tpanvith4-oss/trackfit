@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DateNavigator } from '../../components/common/DateNavigator.jsx';
-import { ActivityIcon, MoonIcon, ScaleIcon, UtensilsIcon } from '../../components/icons.jsx';
+import { ActivityIcon, FlameIcon, MoonIcon, ScaleIcon, UtensilsIcon } from '../../components/icons.jsx';
 import { TabBar } from '../../components/TabBar.jsx';
 import { useSelectedDate } from '../../hooks/useSelectedDate.js';
 import * as syncQueue from '../../services/syncQueue.js';
@@ -9,11 +9,13 @@ import { LogFoodPanel } from '../food/LogFoodPanel.jsx';
 import { SleepProvider } from '../sleep/SleepContext.jsx';
 import { SleepPanel } from '../sleep/SleepPanel.jsx';
 import { LogWeightPanel } from '../weight/LogWeightPanel.jsx';
+import { WorkoutPanel } from '../workout/WorkoutPanel.jsx';
 
 const TABS = [
-  { id: 'food', label: 'Log Food', Icon: UtensilsIcon, Panel: LogFoodPanel, dated: true },
-  { id: 'weight', label: 'Log Weight', Icon: ScaleIcon, Panel: LogWeightPanel, dated: true },
-  { id: 'activity', label: 'Activity', Icon: ActivityIcon, Panel: ActivityPanel, dated: true },
+  { id: 'food', label: 'Food', Icon: UtensilsIcon, Panel: LogFoodPanel, dated: true },
+  { id: 'weight', label: 'Weight', Icon: ScaleIcon, Panel: LogWeightPanel, dated: true },
+  { id: 'train', label: 'Train', Icon: FlameIcon, Panel: WorkoutPanel, dated: false },
+  { id: 'activity', label: 'Move', Icon: ActivityIcon, Panel: ActivityPanel, dated: true },
   { id: 'sleep', label: 'Sleep', Icon: MoonIcon, Panel: SleepPanel, dated: false },
 ];
 

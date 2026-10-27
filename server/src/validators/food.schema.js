@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 export const MEAL_TYPES = ['BREAKFAST', 'LUNCH', 'DINNER', 'SNACK'];
 
+export const recommendationsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(20).default(8),
+});
+
 const macroGrams = z.number().min(0).max(1000).nullable().optional();
 
 export const createFoodSchema = z.object({
@@ -11,6 +15,12 @@ export const createFoodSchema = z.object({
   carbsG: macroGrams,
   fatG: macroGrams,
   mealType: z.enum(MEAL_TYPES).default('SNACK'),
+  weightG: z.number().min(0).max(5000).optional().nullable(),
+  isRawWeight: z.boolean().optional(),
+  fiberG: z.number().min(0).max(200).optional(),
+  addedOilMl: z.number().min(0).max(100).optional(),
+  diaasScore: z.number().min(0).max(2).optional(),
+  forceOverride: z.boolean().optional(),
   loggedAt: z.coerce.date().optional(),
 });
 

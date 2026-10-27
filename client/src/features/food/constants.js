@@ -15,6 +15,28 @@ export const getDailyTargets = (user) => ({
   proteinG: user?.dailyProtein ?? DAILY_TARGETS.proteinG,
 });
 
+export const normalizeMealName = (name) =>
+  String(name ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
+/** Frequent meals first, then static staples, deduped by normalized name. */
+export function mergeMealRecommendations(frequent = [], staples = QUICK_STAPLES, limit = 12) {
+  const seen = new Set();
+  const merged = [];
+
+  for (const meal of [...frequent, ...staples]) {
+    const key = normalizeMealName(meal.name);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    merged.push(meal);
+    if (merged.length >= limit) break;
+  }
+
+  return merged;
+}
+
 export const QUICK_STAPLES = [
   {
     id: 'protein-oats',

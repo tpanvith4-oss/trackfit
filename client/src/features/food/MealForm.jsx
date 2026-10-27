@@ -1,10 +1,13 @@
-import { useId, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
+import { foodApi } from '../../api/foodApi.js';
 import { SpinnerIcon } from '../../components/icons.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Field, Input, Select } from '../../components/ui/Field.jsx';
 import { ErrorMessage } from '../../components/ui/StatusMessage.jsx';
+import { checkAtwater } from '../../constants/cutProtocol.js';
+import { useAsyncData } from '../../hooks/useAsyncData.js';
 import { AiMealLogger } from './AiMealLogger.jsx';
-import { MEAL_TYPES, QUICK_STAPLES } from './constants.js';
+import { MEAL_TYPES, QUICK_STAPLES, mergeMealRecommendations } from './constants.js';
 import { getMealTypeByCurrentTime } from './mealTime.js';
 
 const MACRO_FIELDS = [
@@ -28,12 +31,15 @@ const AI_MEAL_TYPES = { breakfast: 'BREAKFAST', lunch: 'LUNCH', dinner: 'DINNER'
 const MAX_CALORIES = 10_000;
 const MAX_MACRO_G = 1_000;
 
-function PresetChips({ activePresetId, disabled, onSelect }) {
+function PresetChips({ presets, activePresetId, disabled, onSelect }) {
+  if (presets.length === 0) return null;
+
   return (
     <div className="-mx-4 overflow-x-auto px-4 scrollbar-none">
-      <ul className="flex w-max snap-x gap-2 pb-1" aria-label="Quick staples">
-        {QUICK_STAPLES.map((preset) => {
+      <ul className="flex w-max snap-x gap-2 pb-1" aria-label="Meal recommendations">
+        {presets.map((preset) => {
           const active = preset.id === activePresetId;
+          const frequent = preset.source === 'frequent';
           return (
             <li key={preset.id} className="snap-start">
               <button
@@ -52,6 +58,7 @@ function PresetChips({ activePresetId, disabled, onSelect }) {
                 </span>
                 <span className="block whitespace-nowrap text-[11px] tabular-nums text-slate-400">
                   {preset.calories} kcal · {preset.proteinG}g protein
+                  {frequent ? ` · ×${preset.frequency}` : ''}
                 </span>
               </button>
             </li>
@@ -70,6 +77,23 @@ export function MealForm({ onSubmit }) {
   const [error, setError] = useState(null);
   const [aiResetKey, setAiResetKey] = useState(0);
   const submittingRef = useRef(false);
+  const { data: frequentMeals, reload: reloadRecommendations } = useAsyncData(
+    (signal) => foodApi.recommendations({ limit: 8 }, { signal }),
+    [],
+  );
+
+  const presets = useMemo(() => mergeMealRecommendations(frequentMeals ?? [], QUICK_STAPLES), [frequentMeals]);
+  const atwater = useMemo(
+    () =>
+      checkAtwater({
+        name: form.name,
+        calories: form.calories,
+        proteinG: form.proteinG,
+        carbsG: form.carbsG,
+        fatG: form.fatG,
+      }),
+    [form],
+  );
 
   const update = (field) => (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
 
@@ -78,11 +102,16 @@ export function MealForm({ onSubmit }) {
       name: preset.name,
       mealType: preset.mealType,
       calories: String(preset.calories),
-      proteinG: String(preset.proteinG),
-      carbsG: String(preset.carbsG),
-      fatG: String(preset.fatG),
+      proteinG: String(preset.proteinG ?? 0),
+      carbsG: String(preset.carbsG ?? 0),
+      fatG: String(preset.fatG ?? 0),
     });
     setActivePresetId(preset.id);
+    setError(null);
+  };
+
+  const fixMacros = () => {
+    setForm((prev) => ({ ...prev, calories: String(atwater.atwaterCalories) }));
     setError(null);
   };
 
@@ -126,10 +155,12 @@ export function MealForm({ onSubmit }) {
         proteinG: toMacroGrams(form.proteinG),
         carbsG: toMacroGrams(form.carbsG),
         fatG: toMacroGrams(form.fatG),
+        forceOverride: atwater.needsFix,
       });
       setForm(createInitialForm());
       setActivePresetId(null);
       setAiResetKey((key) => key + 1);
+      reloadRecommendations();
     } catch (err) {
       setError(err);
     } finally {
@@ -141,7 +172,7 @@ export function MealForm({ onSubmit }) {
   return (
     <div className="space-y-4">
       <AiMealLogger key={aiResetKey} onEstimate={applyEstimate} disabled={isSubmitting} />
-      <PresetChips activePresetId={activePresetId} disabled={isSubmitting} onSelect={applyPreset} />
+      <PresetChips presets={presets} activePresetId={activePresetId} disabled={isSubmitting} onSelect={applyPreset} />
 
       <form onSubmit={handleSubmit} className="space-y-3">
         <fieldset disabled={isSubmitting} className="space-y-3">
@@ -202,6 +233,19 @@ export function MealForm({ onSubmit }) {
             ))}
           </div>
         </fieldset>
+
+        {atwater.needsFix && (form.calories || form.proteinG || form.carbsG || form.fatG) && (
+          <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-100">
+            <p>
+              {atwater.highCarbLowCarbs
+                ? `High-carb dish looks under-carbed. Atwater estimate: ${atwater.atwaterCalories} kcal.`
+                : `Macros diverge from Atwater by ${Math.round(atwater.discrepancyPct)}%. Suggested: ${atwater.atwaterCalories} kcal.`}
+            </p>
+            <button type="button" onClick={fixMacros} className="mt-2 font-semibold text-amber-300 underline-offset-2 hover:underline">
+              Fix macros / recalculate
+            </button>
+          </div>
+        )}
 
         <ErrorMessage error={error} />
 

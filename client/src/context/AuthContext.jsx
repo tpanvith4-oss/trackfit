@@ -54,6 +54,13 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(async (profile) => startSession(await authApi.register(profile), 'register'), [startSession]);
 
+  const updateProfile = useCallback(async (profile) => {
+    const user = await authApi.updateProfile(profile);
+    saveUser(user);
+    setSession((prev) => (prev ? { ...prev, user } : prev));
+    return user;
+  }, []);
+
   useEffect(
     () =>
       onUnauthorized((_error, token) => {
@@ -100,9 +107,10 @@ export function AuthProvider({ children }) {
       authEvent,
       login,
       register,
+      updateProfile,
       logout,
     }),
-    [session, isReady, authEvent, login, register, logout],
+    [session, isReady, authEvent, login, register, updateProfile, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

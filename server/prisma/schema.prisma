@@ -14,38 +14,84 @@ enum MealType {
   SNACK
 }
 
+enum SplitDay {
+  PUSH
+  PULL_ABS_A
+  LEGS_QUAD
+  HIIT_ABS_B
+  UPPER
+  LEGS_POSTERIOR_ABS_C
+  REST
+}
+
+enum MuscleGroup {
+  CHEST
+  LATS
+  UPPER_BACK
+  SPINAL_ERECTORS
+  FRONT_DELTS
+  SIDE_DELTS
+  REAR_DELTS
+  BICEPS
+  TRICEPS
+  QUADS
+  HAMSTRINGS
+  GLUTES
+  CALVES
+  RECTUS_ABDOMINIS
+  OBLIQUES
+  TVA
+}
+
 model User {
-  id              String        @id @default(cuid())
-  username        String        @unique
-  passwordHash    String        @map("password_hash")
-  name            String
-  baselineWeight  Float         @default(64.0) @map("baseline_weight")
-  targetWeightMin Float         @default(58.0) @map("target_weight_min")
-  targetWeightMax Float         @default(60.0) @map("target_weight_max")
-  dailyCalories   Int           @default(1800) @map("daily_calories")
-  dailyProtein    Int           @default(135) @map("daily_protein")
-  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
-  foodEntries     FoodEntry[]
-  weightEntries   WeightEntry[]
-  sleepSchedule   SleepSchedule?
-  activityEntries ActivityEntry[]
+  id               String             @id @default(cuid())
+  username         String             @unique
+  passwordHash     String             @map("password_hash")
+  name             String
+  baselineWeight   Float              @default(64.0) @map("baseline_weight")
+  targetWeightMin  Float              @default(58.0) @map("target_weight_min")
+  targetWeightMax  Float              @default(60.0) @map("target_weight_max")
+  dailyCalories    Int                @default(1800) @map("daily_calories")
+  dailyProtein     Int                @default(135) @map("daily_protein")
+  heightCm         Float              @default(165.0) @map("height_cm")
+  neckCm           Float              @default(37.0) @map("neck_cm")
+  targetWaistCm    Float              @default(76.2) @map("target_waist_cm")
+  protocolStart    DateTime           @default(dbgenerated("'2026-10-24 00:00:00+00'::timestamptz")) @map("protocol_start") @db.Timestamptz(3)
+  targetDeadline   DateTime           @default(dbgenerated("'2027-01-01 00:00:00+00'::timestamptz")) @map("target_deadline") @db.Timestamptz(3)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  foodEntries      FoodEntry[]
+  weightEntries    WeightEntry[]
+  sleepSchedule    SleepSchedule?
+  activityEntries  ActivityEntry[]
+  bodyMeasurements BodyMeasurement[]
+  dailyCheckins    DailyCheckin[]
+  workoutSessions  WorkoutSession[]
+  mealTemplates    MealTemplate[]
 
   @@map("users")
 }
 
 model FoodEntry {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String   @db.VarChar(120)
-  calories  Int
-  proteinG  Float?   @map("protein_g")
-  carbsG    Float?   @map("carbs_g")
-  fatG      Float?   @map("fat_g")
-  mealType  MealType @default(SNACK) @map("meal_type")
-  loggedAt  DateTime @default(now()) @map("logged_at") @db.Timestamptz(3)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @map("user_id")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String   @db.VarChar(120)
+  calories          Int
+  proteinG          Float?   @map("protein_g")
+  carbsG            Float?   @map("carbs_g")
+  fatG              Float?   @map("fat_g")
+  mealType          MealType @default(SNACK) @map("meal_type")
+  weightG           Float?   @map("weight_g")
+  isRawWeight       Boolean  @default(true) @map("is_raw_weight")
+  fiberG            Float    @default(0) @map("fiber_g")
+  addedOilMl        Float    @default(0) @map("added_oil_ml")
+  diaasScore        Float    @default(1.0) @map("diaas_score")
+  effectiveProteinG Float?   @map("effective_protein_g")
+  atwaterCalories   Int?     @map("atwater_calories")
+  isMacroVerified   Boolean  @default(true) @map("is_macro_verified")
+  loggedAt          DateTime @default(now()) @map("logged_at") @db.Timestamptz(3)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   @@index([userId, loggedAt])
   @@map("food_entries")
@@ -104,4 +150,105 @@ model ActivityEntry {
   @@unique([userId, clientId])
   @@index([userId, date])
   @@map("activity_entries")
+}
+
+model BodyMeasurement {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loggedAt         DateTime @default(now()) @map("logged_at") @db.Timestamptz(3)
+  weightKg         Float    @map("weight_kg")
+  waistUmbilicalCm Float    @map("waist_umbilical_cm")
+  waistNarrowestCm Float?   @map("waist_narrowest_cm")
+  neckCm           Float    @default(37.0) @map("neck_cm")
+  estimatedBfPct   Float    @map("estimated_bf_pct")
+  fatMassKg        Float    @map("fat_mass_kg")
+  leanMassKg       Float    @map("lean_mass_kg")
+  whtr             Float
+  isFasted         Boolean  @default(true) @map("is_fasted")
+  giBloatScore     Int      @default(1) @map("gi_bloat_score")
+  note             String?
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([userId, loggedAt])
+  @@map("body_measurements")
+}
+
+model DailyCheckin {
+  id                    String    @id @default(cuid())
+  userId                String    @map("user_id")
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date                  DateTime  @db.Date
+  isFoodLogComplete     Boolean   @default(false) @map("is_food_log_complete")
+  waterMl               Int       @default(0) @map("water_ml")
+  creatineTaken         Boolean   @default(false) @map("creatine_taken")
+  vacuumSetsCompleted   Int       @default(0) @map("vacuum_sets_completed")
+  soyaTripleRinsed      Boolean   @default(false) @map("soya_triple_rinsed")
+  bedtimeAt             DateTime? @map("bedtime_at") @db.Timestamptz(3)
+  wakeAt                DateTime? @map("wake_at") @db.Timestamptz(3)
+  actualSleepHours      Float?    @map("actual_sleep_hours")
+  alarmSolvedAt         DateTime? @map("alarm_solved_at") @db.Timestamptz(3)
+  alarmSolveDurationSec Int?      @map("alarm_solve_duration_sec")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([userId, date])
+  @@map("daily_checkins")
+}
+
+model WorkoutSession {
+  id              String       @id @default(cuid())
+  userId          String       @map("user_id")
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  splitDay        SplitDay     @map("split_day")
+  mesocycleWeek   Int          @default(1) @map("mesocycle_week")
+  startedAt       DateTime     @default(now()) @map("started_at") @db.Timestamptz(3)
+  endedAt         DateTime?    @map("ended_at") @db.Timestamptz(3)
+  durationMinutes Int?         @map("duration_minutes")
+  sessionRpe      Int?         @map("session_rpe")
+  notes           String?
+  sets            WorkoutSet[]
+
+  @@index([userId, startedAt])
+  @@map("workout_sessions")
+}
+
+model WorkoutSet {
+  id               String         @id @default(cuid())
+  workoutSessionId String         @map("workout_session_id")
+  session          WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+  exerciseName     String         @map("exercise_name")
+  primaryMuscle    MuscleGroup    @map("primary_muscle")
+  secondaryMuscles MuscleGroup[]  @map("secondary_muscles")
+  setNumber        Int            @map("set_number")
+  weightKg         Float          @default(0) @map("weight_kg")
+  reps             Int
+  rir              Int            @default(1)
+  isWarmup         Boolean        @default(false) @map("is_warmup")
+  isCompleted      Boolean        @default(true) @map("is_completed")
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([workoutSessionId])
+  @@map("workout_sets")
+}
+
+model MealTemplate {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  mealType    MealType @map("meal_type")
+  calories    Int
+  proteinG    Float    @map("protein_g")
+  carbsG      Float    @map("carbs_g")
+  fatG        Float    @map("fat_g")
+  fiberG      Float    @default(0) @map("fiber_g")
+  diaasScore  Float    @default(1.0) @map("diaas_score")
+  isRawWeight Boolean  @default(true) @map("is_raw_weight")
+  costInr     Float    @default(0) @map("cost_inr")
+  recipeNotes String?  @map("recipe_notes")
+  sortOrder   Int      @default(0) @map("sort_order")
+
+  @@index([userId, sortOrder])
+  @@map("meal_templates")
 }

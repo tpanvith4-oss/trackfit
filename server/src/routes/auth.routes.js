@@ -2,12 +2,13 @@ import { Router } from 'express';
 import * as authController from '../controllers/auth.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { loginSchema, registerSchema } from '../validators/auth.schema.js';
+import { loginSchema, registerSchema, updateProfileSchema } from '../validators/auth.schema.js';
 
 const router = Router();
 
 router.post('/register', validate({ body: registerSchema }), authController.register);
 router.post('/login', validate({ body: loginSchema }), authController.login);
 router.get('/me', requireAuth, authController.me);
+router.patch('/me', requireAuth, validate({ body: updateProfileSchema }), authController.updateMe);
 
 export default router;

@@ -1,27 +1,27 @@
-import { FlameIcon, RouteIcon, SmartphoneIcon } from '../../components/icons.jsx';
+import { ActivityIcon, RouteIcon, SmartphoneIcon } from '../../components/icons.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { formatDay, formatTime } from '../../utils/date.js';
 import { formatFixed, formatNumber } from '../../utils/number.js';
-import { needsStepCompensation, SOURCE_LABELS, STEP_GOAL } from './activityStats.js';
+import { ACTIVE_CALORIE_GOAL, needsStepCompensation, SOURCE_LABELS } from './activityStats.js';
 
 const RING_SIZE = 132;
 const RING_STROKE = 11;
 const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-function StepRing({ steps, goal }) {
-  const progress = Math.min(1, steps / goal);
-  const goalMet = steps >= goal;
+function CalorieRing({ calories, goal }) {
+  const progress = Math.min(1, calories / goal);
+  const goalMet = calories >= goal;
 
   return (
     <div
       role="progressbar"
-      aria-label="Steps today against daily goal"
+      aria-label="Active calories today against daily burn target"
       aria-valuemin={0}
       aria-valuemax={goal}
-      aria-valuenow={Math.min(steps, goal)}
-      aria-valuetext={`${formatNumber(steps)} of ${formatNumber(goal)} steps`}
+      aria-valuenow={Math.min(calories, goal)}
+      aria-valuetext={`${formatNumber(calories)} of ${formatNumber(goal)} active kcal`}
       className="relative shrink-0"
       style={{ width: RING_SIZE, height: RING_SIZE }}
     >
@@ -36,12 +36,12 @@ function StepRing({ steps, goal }) {
           strokeLinecap="round"
           strokeDasharray={RING_CIRCUMFERENCE}
           strokeDashoffset={RING_CIRCUMFERENCE * (1 - progress)}
-          className={`transition-[stroke-dashoffset] duration-700 ease-out ${goalMet ? 'stroke-brand-400' : 'stroke-brand-500'}`}
+          className={`transition-[stroke-dashoffset] duration-700 ease-out ${goalMet ? 'stroke-amber-300' : 'stroke-amber-400'}`}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span className="text-2xl font-bold tabular-nums text-slate-50">{formatNumber(steps)}</span>
-        <span className="text-[11px] text-slate-400">{goalMet ? 'Goal hit' : `of ${formatNumber(goal)} steps`}</span>
+        <span className="text-2xl font-bold tabular-nums text-slate-50">{formatNumber(calories)}</span>
+        <span className="text-[11px] text-slate-400">{goalMet ? 'Burn target' : `of ${formatNumber(goal)} kcal`}</span>
       </div>
     </div>
   );
@@ -105,14 +105,14 @@ export function ActivitySummaryCard({
         )}
 
         <div className="flex items-center gap-4">
-          <StepRing steps={steps} goal={STEP_GOAL} />
+          <CalorieRing calories={activeCalories} goal={ACTIVE_CALORIE_GOAL} />
           <div className="grid min-w-0 flex-1 gap-2">
             <StatTile
-              Icon={FlameIcon}
-              label="Active burn"
-              value={formatNumber(activeCalories)}
-              unit="kcal"
-              iconClassName="bg-amber-400/15 text-amber-300"
+              Icon={ActivityIcon}
+              label="Steps"
+              value={formatNumber(steps)}
+              unit=""
+              iconClassName="bg-brand-500/15 text-brand-300"
             />
             <StatTile
               Icon={RouteIcon}
@@ -136,7 +136,7 @@ export function ActivitySummaryCard({
             onClick={onConnect}
             className="w-full rounded-xl border border-dashed border-slate-700 px-3 py-3 text-left text-sm text-slate-400 transition hover:border-slate-500 hover:text-slate-300"
           >
-            <span className="font-semibold text-slate-200">Connect iPhone Health</span> to fill in steps automatically.
+            <span className="font-semibold text-slate-200">Connect iPhone Health</span> to fill in active calories automatically.
             It’s free and takes about 5 minutes.
           </button>
         )}

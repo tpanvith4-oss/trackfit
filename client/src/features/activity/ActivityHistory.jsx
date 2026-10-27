@@ -3,7 +3,7 @@ import { IconButton } from '../../components/ui/Button.jsx';
 import { EmptyState } from '../../components/ui/StatusMessage.jsx';
 import { formatDay } from '../../utils/date.js';
 import { formatFixed, formatNumber } from '../../utils/number.js';
-import { dateFromDayKey, SOURCE_LABELS, STEP_GOAL } from './activityStats.js';
+import { dateFromDayKey, SOURCE_LABELS } from './activityStats.js';
 
 function WorkoutRow({ workout, onDelete, deleting }) {
   return (
@@ -44,12 +44,12 @@ export function ActivityHistory({ days, onDelete, deletingId }) {
         <li key={day.key} className="py-3">
           <div className="flex items-baseline justify-between gap-3">
             <p className="font-medium text-slate-100">{formatDay(dateFromDayKey(day.key))}</p>
-            <p className={`text-sm font-semibold tabular-nums ${day.steps >= STEP_GOAL ? 'text-brand-400' : 'text-slate-200'}`}>
-              {formatNumber(day.steps)} <span className="text-xs font-normal text-slate-500">steps</span>
+            <p className={`text-sm font-semibold tabular-nums ${day.activeCalories > 0 ? 'text-amber-300' : 'text-slate-200'}`}>
+              {formatNumber(day.activeCalories)} <span className="text-xs font-normal text-slate-500">kcal</span>
             </p>
           </div>
           <p className="mt-0.5 text-xs text-slate-500">
-            {formatNumber(day.activeCalories)} kcal active · {formatFixed(day.distanceKm)} km
+            {formatNumber(day.steps)} steps · {formatFixed(day.distanceKm)} km
             {day.lastSync && ` · ${SOURCE_LABELS[day.lastSync.source] ?? day.lastSync.source}`}
           </p>
           {day.workouts.length > 0 && (

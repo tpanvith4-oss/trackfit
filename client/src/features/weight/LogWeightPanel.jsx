@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useAsyncData } from '../../hooks/useAsyncData.js';
 import { getDayLabel, shiftDayKey, timestampForDay, todayKey } from '../../hooks/useSelectedDate.js';
 import { dayKey } from '../../utils/date.js';
+import { WaistTrajectoryCard } from '../protocol/WaistTrajectoryCard.jsx';
 import { getCutProtocol } from './constants.js';
 import { WeightEntryList } from './WeightEntryList.jsx';
 import { WeightForm } from './WeightForm.jsx';
@@ -71,6 +72,7 @@ export function LogWeightPanel({ selectedDate = todayKey() }) {
   return (
     <div className="space-y-4">
       <WeightSummaryCard stats={stats} status={status} protocol={protocol} isLoading={isInitialLoad} />
+      <WaistTrajectoryCard />
 
       <Card title="30-day trend" subtitle={`Through ${getDayLabel(selectedDate)}`}>
         {isInitialLoad ? (

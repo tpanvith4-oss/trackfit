@@ -16,3 +16,13 @@ export async function me(req, res) {
   if (!user) throw new HttpError(401, 'Account no longer exists');
   res.json({ user });
 }
+
+export async function updateMe(req, res) {
+  try {
+    const user = await authService.updateProfile(req.userId, req.validated.body);
+    res.json({ user });
+  } catch (err) {
+    if (err?.code === 'P2025') throw new HttpError(401, 'Account no longer exists');
+    throw err;
+  }
+}

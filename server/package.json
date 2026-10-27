@@ -16,6 +16,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
+    "db:seed-protocol": "node prisma/seed-cut-protocol.js",
     "claim-legacy-data": "node scripts/claim-legacy-data.js"
   },
   "dependencies": {

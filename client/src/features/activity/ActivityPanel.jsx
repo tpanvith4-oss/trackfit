@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { activityApi } from '../../api/activityApi.js';
-import { WeeklyStepsBarChart } from '../../components/charts/WeeklyStepsBarChart.jsx';
+import { WeeklyCaloriesBarChart } from '../../components/charts/WeeklyCaloriesBarChart.jsx';
 import { CloudOffIcon, RefreshIcon } from '../../components/icons.jsx';
 import { IconButton } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
@@ -148,8 +148,8 @@ export function ActivityPanel({ selectedDate }) {
         isRefreshing={loading}
       />
 
-      <Card title="Weekly steps" subtitle="7 days ending on the selected day">
-        {isInitialLoad ? <div className="h-48 animate-pulse rounded-xl bg-slate-800/40" aria-busy="true" /> : <WeeklyStepsBarChart data={week} />}
+      <Card title="Weekly active calories" subtitle="7 days ending on the selected day">
+        {isInitialLoad ? <div className="h-48 animate-pulse rounded-xl bg-slate-800/40" aria-busy="true" /> : <WeeklyCaloriesBarChart data={week} />}
       </Card>
 
       <Card

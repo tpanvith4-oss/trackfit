@@ -3,6 +3,8 @@ import { dayKey } from '../../utils/date.js';
 export const STEP_GOAL = 10_000;
 export const STEP_WARNING_THRESHOLD = 8_000;
 export const STEP_WARNING_HOUR = 19;
+/** Soft daily active-burn target used for the summary ring fill. */
+export const ACTIVE_CALORIE_GOAL = 500;
 export const HISTORY_DAYS = 14;
 
 export const MANUAL_SOURCE = 'manual';

@@ -21,6 +21,11 @@ export const PROFILE_SELECT = Object.freeze({
   targetWeightMax: true,
   dailyCalories: true,
   dailyProtein: true,
+  heightCm: true,
+  neckCm: true,
+  targetWaistCm: true,
+  protocolStart: true,
+  targetDeadline: true,
 });
 
 const usernameTaken = () => new HttpError(409, 'Username already taken');
@@ -88,4 +93,19 @@ export async function authenticateUser({ username, password }) {
 
 export function findProfile(userId) {
   return prisma.user.findUnique({ where: { id: userId }, select: PROFILE_SELECT });
+}
+
+export function updateProfile(userId, data) {
+  return prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: data.name,
+      baselineWeight: data.baselineWeight,
+      targetWeightMin: data.targetWeightMin,
+      targetWeightMax: data.targetWeightMax,
+      dailyCalories: data.dailyCalories,
+      dailyProtein: data.dailyProtein,
+    },
+    select: PROFILE_SELECT,
+  });
 }

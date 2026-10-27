@@ -264,7 +264,10 @@ function SleepStateProvider({ user, initialSchedule, initialAlarmState, children
   }, [alarmStateReady, armedWakeTime, alarmState]);
 
   const answerAlarm = (patch) => {
-    if (alarm && !alarm.isTest) updateAlarmState({ handledAt: Date.now(), snoozeUntil: null, ...patch });
+    if (alarm && !alarm.isTest) {
+      updateAlarmState({ handledAt: Date.now(), snoozeUntil: null, ...patch });
+      window.dispatchEvent(new CustomEvent('trackfit:alarm-solved', { detail: { at: Date.now() } }));
+    }
   };
 
   const snooze = () => {
