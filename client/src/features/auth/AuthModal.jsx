@@ -9,7 +9,7 @@ import { normalizeUsername, validateLogin, validateRegistration } from './valida
 
 const MODES = [
   { id: 'login', label: 'Log In' },
-  { id: 'register', label: 'Create Profile' },
+  { id: 'register', label: 'Create Account' },
 ];
 
 const COPY = {
@@ -20,10 +20,10 @@ const COPY = {
     submitting: 'Signing in…',
   },
   register: {
-    title: 'Create your profile',
-    subtitle: 'Your meals and weigh-ins stay private to your account.',
-    submit: 'Create Profile',
-    submitting: 'Creating profile…',
+    title: 'Create your account',
+    subtitle: 'Next you’ll set weight, calories, and body metrics.',
+    submit: 'Create Account',
+    submitting: 'Creating account…',
   },
 };
 
@@ -31,8 +31,6 @@ const INITIAL_VALUES = {
   name: '',
   username: '',
   password: '',
-  baselineWeight: '64.0',
-  dailyCalories: '1800',
 };
 
 const KNOWN_FIELDS = new Set(Object.keys(INITIAL_VALUES));
@@ -143,8 +141,6 @@ export function AuthModal() {
           name: values.name.trim(),
           username: normalizeUsername(values.username),
           password: values.password,
-          baselineWeight: parseFloat(values.baselineWeight),
-          dailyCalories: parseInt(values.dailyCalories, 10),
         });
       } else {
         await login({ username: normalizeUsername(values.username), password: values.password });
@@ -222,26 +218,10 @@ export function AuthModal() {
               <PasswordInput
                 {...fieldProps('password')}
                 autoComplete={isRegister ? 'new-password' : 'current-password'}
-                enterKeyHint={isRegister ? 'next' : 'go'}
+                enterKeyHint="go"
                 maxLength={72}
               />
             </Field>
-
-            {isRegister && (
-              <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-                <p className="mb-3 text-xs font-medium text-slate-400">
-                  Starting point <span className="text-slate-600">· optional, pre-filled with the default cut</span>
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Weight (kg)" htmlFor={fieldId('baselineWeight')} error={fieldErrors.baselineWeight}>
-                    <Input {...fieldProps('baselineWeight')} type="number" inputMode="decimal" min="20" max="500" step="0.1" />
-                  </Field>
-                  <Field label="Calories / day" htmlFor={fieldId('dailyCalories')} error={fieldErrors.dailyCalories}>
-                    <Input {...fieldProps('dailyCalories')} type="number" inputMode="numeric" min="800" max="10000" step="50" />
-                  </Field>
-                </div>
-              </div>
-            )}
           </fieldset>
 
           <ErrorMessage error={formError} />
@@ -253,14 +233,14 @@ export function AuthModal() {
         </form>
 
         <p className="mt-4 text-center text-sm text-slate-500">
-          {isRegister ? 'Already have a profile?' : 'New to TrackFit?'}{' '}
+          {isRegister ? 'Already have an account?' : 'New to TrackFit?'}{' '}
           <button
             type="button"
             onClick={() => switchMode(isRegister ? 'login' : 'register')}
             disabled={isSubmitting}
             className="font-semibold text-brand-400 underline-offset-4 hover:underline"
           >
-            {isRegister ? 'Log in' : 'Create a profile'}
+            {isRegister ? 'Log in' : 'Create an account'}
           </button>
         </p>
       </section>

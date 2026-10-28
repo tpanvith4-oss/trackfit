@@ -55,7 +55,10 @@ model User {
   dailyProtein     Int                @default(135) @map("daily_protein")
   heightCm         Float              @default(165.0) @map("height_cm")
   neckCm           Float              @default(37.0) @map("neck_cm")
+  baselineWaistCm  Float?             @map("baseline_waist_cm")
   targetWaistCm    Float              @default(76.2) @map("target_waist_cm")
+  /// False until the post-signup setup screen is completed. Existing accounts default true.
+  profileCompleted Boolean            @default(true) @map("profile_completed")
   protocolStart    DateTime           @default(dbgenerated("'2026-10-24 00:00:00+00'::timestamptz")) @map("protocol_start") @db.Timestamptz(3)
   targetDeadline   DateTime           @default(dbgenerated("'2027-01-01 00:00:00+00'::timestamptz")) @map("target_deadline") @db.Timestamptz(3)
   createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)

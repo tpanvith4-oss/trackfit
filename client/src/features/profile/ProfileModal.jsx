@@ -5,9 +5,20 @@ import { Button, IconButton } from '../../components/ui/Button.jsx';
 import { Field, fieldErrorId, Input } from '../../components/ui/Field.jsx';
 import { ErrorMessage } from '../../components/ui/StatusMessage.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
-import { validateProfile } from '../auth/validation.js';
+import { toProfilePayload, validateProfile } from '../auth/validation.js';
 
-const PROFILE_FIELDS = ['name', 'baselineWeight', 'targetWeightMin', 'targetWeightMax', 'dailyCalories', 'dailyProtein'];
+const PROFILE_FIELDS = [
+  'name',
+  'baselineWeight',
+  'targetWeightMin',
+  'targetWeightMax',
+  'dailyCalories',
+  'dailyProtein',
+  'heightCm',
+  'neckCm',
+  'baselineWaistCm',
+  'targetWaistCm',
+];
 const KNOWN_FIELDS = new Set(PROFILE_FIELDS);
 
 const toFormValues = (user) => ({
@@ -17,6 +28,10 @@ const toFormValues = (user) => ({
   targetWeightMax: String(user.targetWeightMax ?? ''),
   dailyCalories: String(user.dailyCalories ?? ''),
   dailyProtein: String(user.dailyProtein ?? ''),
+  heightCm: user.heightCm != null ? String(user.heightCm) : '',
+  neckCm: user.neckCm != null ? String(user.neckCm) : '',
+  baselineWaistCm: user.baselineWaistCm != null ? String(user.baselineWaistCm) : '',
+  targetWaistCm: user.targetWaistCm != null ? String(user.targetWaistCm) : '',
 });
 
 function mapServerError(err) {
@@ -88,14 +103,7 @@ export function ProfileModal({ onClose }) {
     setSaved(false);
 
     try {
-      await updateProfile({
-        name: values.name.trim(),
-        baselineWeight: parseFloat(values.baselineWeight),
-        targetWeightMin: parseFloat(values.targetWeightMin),
-        targetWeightMax: parseFloat(values.targetWeightMax),
-        dailyCalories: parseInt(values.dailyCalories, 10),
-        dailyProtein: parseInt(values.dailyProtein, 10),
-      });
+      await updateProfile(toProfilePayload(values));
       setSaved(true);
     } catch (err) {
       const mapped = mapServerError(err);
@@ -128,7 +136,7 @@ export function ProfileModal({ onClose }) {
               Edit profile
             </h2>
             <p id={`${id}-subtitle`} className="mt-0.5 text-sm text-slate-400">
-              Update your goals and starting numbers. Food and weight screens use these right away.
+              Update goals and body metrics. Food and weight screens use these right away.
             </p>
           </div>
           <IconButton ref={closeButtonRef} label="Close" onClick={onClose} disabled={isSubmitting} className="-mt-1 -mr-2 shrink-0">
@@ -166,6 +174,26 @@ export function ProfileModal({ onClose }) {
               <Field label="Target max" htmlFor={fieldId('targetWeightMax')} error={fieldErrors.targetWeightMax} hint="kg">
                 <Input {...fieldProps('targetWeightMax')} type="number" inputMode="decimal" min="20" max="500" step="0.1" required />
               </Field>
+            </div>
+
+            <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-500">Body metrics · optional</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Height" htmlFor={fieldId('heightCm')} error={fieldErrors.heightCm} hint="cm">
+                  <Input {...fieldProps('heightCm')} type="number" inputMode="decimal" min="100" max="250" step="0.1" />
+                </Field>
+                <Field label="Neck" htmlFor={fieldId('neckCm')} error={fieldErrors.neckCm} hint="cm">
+                  <Input {...fieldProps('neckCm')} type="number" inputMode="decimal" min="20" max="80" step="0.1" />
+                </Field>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <Field label="Current waist" htmlFor={fieldId('baselineWaistCm')} error={fieldErrors.baselineWaistCm} hint="cm">
+                  <Input {...fieldProps('baselineWaistCm')} type="number" inputMode="decimal" min="40" max="200" step="0.1" />
+                </Field>
+                <Field label="Target waist" htmlFor={fieldId('targetWaistCm')} error={fieldErrors.targetWaistCm} hint="cm">
+                  <Input {...fieldProps('targetWaistCm')} type="number" inputMode="decimal" min="40" max="200" step="0.1" />
+                </Field>
+              </div>
             </div>
           </fieldset>
 

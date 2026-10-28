@@ -23,7 +23,9 @@ export const PROFILE_SELECT = Object.freeze({
   dailyProtein: true,
   heightCm: true,
   neckCm: true,
+  baselineWaistCm: true,
   targetWaistCm: true,
+  profileCompleted: true,
   protocolStart: true,
   targetDeadline: true,
 });
@@ -59,7 +61,7 @@ export function verifyToken(token) {
   return payload;
 }
 
-export async function registerUser({ name, username, password, baselineWeight, dailyCalories }) {
+export async function registerUser({ name, username, password }) {
   const existing = await prisma.user.findUnique({ where: { username }, select: { id: true } });
   if (existing) throw usernameTaken();
 
@@ -67,7 +69,7 @@ export async function registerUser({ name, username, password, baselineWeight, d
 
   try {
     const user = await prisma.user.create({
-      data: { name, username, passwordHash, baselineWeight, dailyCalories },
+      data: { name, username, passwordHash, profileCompleted: false },
       select: PROFILE_SELECT,
     });
     return { token: signToken(user), user };
@@ -105,6 +107,11 @@ export function updateProfile(userId, data) {
       targetWeightMax: data.targetWeightMax,
       dailyCalories: data.dailyCalories,
       dailyProtein: data.dailyProtein,
+      ...(data.heightCm !== undefined && { heightCm: data.heightCm }),
+      ...(data.neckCm !== undefined && { neckCm: data.neckCm }),
+      ...(data.baselineWaistCm !== undefined && { baselineWaistCm: data.baselineWaistCm }),
+      ...(data.targetWaistCm !== undefined && { targetWaistCm: data.targetWaistCm }),
+      profileCompleted: true,
     },
     select: PROFILE_SELECT,
   });
