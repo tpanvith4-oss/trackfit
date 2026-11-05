@@ -8,18 +8,42 @@ import { notFound } from './middleware/notFound.js';
 import apiRouter from './routes/index.js';
 import { HttpError } from './utils/HttpError.js';
 
-// Origins of the Capacitor WebView (Android https/http schemes, iOS), i.e. the TrackFit app itself.
+// Capacitor WebView origins (Android https/http schemes, iOS).
 const NATIVE_APP_ORIGINS = ['https://localhost', 'http://localhost', 'capacitor://localhost'];
+
+// Always allowed browser origins (local Vite + Firebase Hosting).
+const DEFAULT_WEB_ORIGINS = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'https://trackfit-apk.web.app',
+  'https://trackfit-apk.firebaseapp.com',
+];
+
+const allowedOrigins = new Set([...DEFAULT_WEB_ORIGINS, ...NATIVE_APP_ORIGINS, ...env.corsOrigins]);
 
 const corsOptions = {
   origin(origin, callback) {
-    // Requests without an Origin header (curl, native HTTP, same-origin) are always allowed.
-    if (!origin || env.corsOrigins.length === 0 || env.corsOrigins.includes(origin) || NATIVE_APP_ORIGINS.includes(origin)) {
+    // No Origin (curl, same-origin, native HTTP) — always allow.
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+    // Explicit allowlist: Firebase, localhost, Capacitor, plus CORS_ORIGINS env.
+    if (allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+    // Unset CORS_ORIGINS keeps open access for ad-hoc preview URLs.
+    if (env.corsOrigins.length === 0) {
       callback(null, true);
       return;
     }
     callback(new HttpError(403, `Origin ${origin} is not allowed by CORS`));
   },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true,
+  optionsSuccessStatus: 204,
 };
 
 export function createApp() {

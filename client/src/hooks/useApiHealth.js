@@ -16,7 +16,10 @@ export function useApiHealth() {
       controller = new AbortController();
       try {
         const res = await healthApi.check({ signal: controller.signal });
-        if (!cancelled) setStatus(res.status === 'ok' ? 'online' : 'degraded');
+        if (cancelled) return;
+        // Accept `{ status: "ok" }` or any successful payload; only "degraded" marks DB issues.
+        const payloadStatus = typeof res?.status === 'string' ? res.status : 'ok';
+        setStatus(payloadStatus === 'degraded' || res?.database === 'down' ? 'degraded' : 'online');
       } catch (err) {
         if (cancelled || controller.signal.aborted) return;
         // 503 = API up but DB down; network/timeout/CORS → offline
