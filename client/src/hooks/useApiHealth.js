@@ -9,23 +9,30 @@ export function useApiHealth() {
 
   useEffect(() => {
     let controller;
+    let cancelled = false;
 
     const check = async () => {
       controller?.abort();
       controller = new AbortController();
       try {
         const res = await healthApi.check({ signal: controller.signal });
-        setStatus(res.status === 'ok' ? 'online' : 'degraded');
+        if (!cancelled) setStatus(res.status === 'ok' ? 'online' : 'degraded');
       } catch (err) {
-        if (controller.signal.aborted) return;
+        if (cancelled || controller.signal.aborted) return;
+        // 503 = API up but DB down; network/timeout/CORS → offline
         setStatus(err.status === 503 ? 'degraded' : 'offline');
       }
     };
 
     check();
     const intervalId = setInterval(check, POLL_INTERVAL_MS);
+    const onVisible = () => document.visibilityState === 'visible' && check();
+    document.addEventListener('visibilitychange', onVisible);
+
     return () => {
+      cancelled = true;
       clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisible);
       controller?.abort();
     };
   }, []);
