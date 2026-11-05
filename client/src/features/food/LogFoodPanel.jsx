@@ -8,8 +8,7 @@ import { Card } from '../../components/ui/Card.jsx';
 import { ErrorMessage, ListSkeleton } from '../../components/ui/StatusMessage.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useAsyncData } from '../../hooks/useAsyncData.js';
-import { dateFromKey, getDayLabel, timestampForDay, todayKey } from '../../hooks/useSelectedDate.js';
-import { addDays } from '../../utils/date.js';
+import { dateFromKey, getDayLabel, todayKey } from '../../hooks/useSelectedDate.js';
 import { BlueprintMealBar } from './BlueprintMealBar.jsx';
 import { getDailyTargets } from './constants.js';
 import { DailyHabitPills } from './DailyHabitPills.jsx';
@@ -17,9 +16,18 @@ import { MacroCard } from './MacroCard.jsx';
 import { MealForm } from './MealForm.jsx';
 import { MealHistory } from './MealHistory.jsx';
 
-const sumBy = (entries, field) => entries.reduce((total, entry) => total + (Number(entry[field]) || 0), 0);
-
 const createOptimisticId = () => `optimistic-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const sumField = (entries, field) => entries.reduce((total, entry) => total + (Number(entry[field]) || 0), 0);
+
+const toDayPayload = (entries) => ({
+  success: true,
+  data: entries,
+  totalCalories: sumField(entries, 'calories'),
+  totalProtein: sumField(entries, 'proteinG'),
+  totalCarbs: sumField(entries, 'carbsG'),
+  totalFat: sumField(entries, 'fatG'),
+});
 
 const EMPTY_CHECKIN = {
   isFoodLogComplete: false,
@@ -34,7 +42,7 @@ export function LogFoodPanel({ selectedDate = todayKey() }) {
   const targets = useMemo(() => getDailyTargets(user), [user]);
   const dayStart = useMemo(() => dateFromKey(selectedDate), [selectedDate]);
   const { data, error, loading, reload, setData } = useAsyncData(
-    (signal) => foodApi.list({ from: dayStart, to: addDays(dayStart, 1), limit: 200 }, { signal }),
+    (signal) => foodApi.getFoodLogsByDay(selectedDate, 200, { signal }),
     [selectedDate],
   );
   const { data: templates } = useAsyncData((signal) => mealTemplatesApi.list({ signal }), []);
@@ -45,34 +53,34 @@ export function LogFoodPanel({ selectedDate = todayKey() }) {
   const [deletingIds, setDeletingIds] = useState(() => new Set());
   const [deleteError, setDeleteError] = useState(null);
   const [pendingTemplate, setPendingTemplate] = useState(null);
-  const entries = useMemo(() => data ?? [], [data]);
+  const entries = useMemo(() => data?.data ?? [], [data]);
 
   const totals = useMemo(
     () => ({
-      calories: sumBy(entries, 'calories'),
-      proteinG: sumBy(entries, 'proteinG'),
-      carbsG: sumBy(entries, 'carbsG'),
-      fatG: sumBy(entries, 'fatG'),
+      calories: data?.totalCalories ?? 0,
+      proteinG: data?.totalProtein ?? 0,
+      carbsG: data?.totalCarbs ?? 0,
+      fatG: data?.totalFat ?? 0,
     }),
-    [entries],
+    [data],
   );
 
   const handleCreate = useCallback(
     async (formValues) => {
-      const payload = { ...formValues, loggedAt: timestampForDay(selectedDate).toISOString() };
+      const payload = { ...formValues, date: selectedDate };
       const optimisticId = createOptimisticId();
       const optimisticEntry = { ...payload, id: optimisticId, isPending: true };
-      setData((prev) => [optimisticEntry, ...(prev ?? [])]);
+      setData((prev) => toDayPayload([optimisticEntry, ...(prev?.data ?? [])]));
 
       try {
         const created = await foodApi.create(payload);
         setData((prev) => {
-          const rest = (prev ?? []).filter((entry) => entry.id !== optimisticId && entry.id !== created.id);
-          return [created, ...rest];
+          const rest = (prev?.data ?? []).filter((entry) => entry.id !== optimisticId && entry.id !== created.id);
+          return toDayPayload([created, ...rest]);
         });
         setPendingTemplate(null);
       } catch (err) {
-        setData((prev) => (prev ?? []).filter((entry) => entry.id !== optimisticId));
+        setData((prev) => toDayPayload((prev?.data ?? []).filter((entry) => entry.id !== optimisticId)));
         throw err;
       }
     },
@@ -124,10 +132,10 @@ export function LogFoodPanel({ selectedDate = todayKey() }) {
       setDeleteError(null);
       try {
         await foodApi.remove(id);
-        setData((prev) => (prev ?? []).filter((entry) => entry.id !== id));
+        setData((prev) => toDayPayload((prev?.data ?? []).filter((entry) => entry.id !== id)));
       } catch (err) {
         if (err.status === 404) {
-          setData((prev) => (prev ?? []).filter((entry) => entry.id !== id));
+          setData((prev) => toDayPayload((prev?.data ?? []).filter((entry) => entry.id !== id)));
         } else {
           setDeleteError(err);
         }
