@@ -2,10 +2,8 @@ import cors from 'cors';
 import express from 'express';
 import morgan from 'morgan';
 import { env, isProduction } from './config/env.js';
-import { getHealth } from './controllers/health.controller.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
-import apiRouter from './routes/index.js';
 import { HttpError } from './utils/HttpError.js';
 
 // Capacitor WebView origins (Android https/http schemes, iOS).
@@ -23,17 +21,14 @@ const allowedOrigins = new Set([...DEFAULT_WEB_ORIGINS, ...NATIVE_APP_ORIGINS, .
 
 const corsOptions = {
   origin(origin, callback) {
-    // No Origin (curl, same-origin, native HTTP) — always allow.
     if (!origin) {
       callback(null, true);
       return;
     }
-    // Explicit allowlist: Firebase, localhost, Capacitor, plus CORS_ORIGINS env.
     if (allowedOrigins.has(origin)) {
       callback(null, true);
       return;
     }
-    // Unset CORS_ORIGINS keeps open access for ad-hoc preview URLs.
     if (env.corsOrigins.length === 0) {
       callback(null, true);
       return;
@@ -46,24 +41,36 @@ const corsOptions = {
   optionsSuccessStatus: 204,
 };
 
+/** Instant 200 — no DB, no auth. Must stay free of Prisma / AI imports. */
+function sendOk(_req, res) {
+  res.status(200).json({ status: 'ok' });
+}
+
+/**
+ * Minimal app that can bind a port immediately for Render's 30s proxy window.
+ * Heavy `/api/*` routers are mounted later via `mountApiRoutes`.
+ */
 export function createApp() {
   const app = express();
 
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
 
+  // Health FIRST — before morgan/cors/body parsers — so keep-alive never waits on them.
+  app.get('/health', sendOk);
+  app.get('/api/health', sendOk);
+
   app.use(morgan(isProduction ? 'combined' : 'dev'));
   app.use(cors(corsOptions));
   app.use(express.json({ limit: '100kb' }));
 
-  // Liveness first — no auth, no DB — so cold-start probes succeed immediately.
-  app.get('/health', getHealth);
-  app.get('/api/health', getHealth);
+  return app;
+}
 
+/** Mounts authenticated API routes + 404/error handlers after the port is bound. */
+export async function mountApiRoutes(app) {
+  const { default: apiRouter } = await import('./routes/index.js');
   app.use('/api', apiRouter);
-
   app.use(notFound);
   app.use(errorHandler);
-
-  return app;
 }
