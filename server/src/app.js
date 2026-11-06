@@ -56,7 +56,10 @@ export function createApp() {
   app.use(cors(corsOptions));
   app.use(express.json({ limit: '100kb' }));
 
+  // Liveness first — no auth, no DB — so cold-start probes succeed immediately.
   app.get('/health', getHealth);
+  app.get('/api/health', getHealth);
+
   app.use('/api', apiRouter);
 
   app.use(notFound);

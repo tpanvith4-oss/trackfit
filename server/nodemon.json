@@ -1,6 +1,6 @@
 {
   "watch": ["src", ".env"],
   "ext": "js,json",
-  "exec": "node src/server.js",
+  "exec": "node src/index.js",
   "delay": 250
 }

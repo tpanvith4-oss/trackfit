@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "src/server.js",
+  "main": "src/index.js",
   "engines": {
     "node": ">=20.18.0"
   },
   "scripts": {
     "dev": "nodemon",
-    "start": "node src/server.js",
+    "start": "node src/index.js",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
