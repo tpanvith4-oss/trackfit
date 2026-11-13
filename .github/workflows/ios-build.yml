@@ -16,17 +16,14 @@ jobs:
           node-version: '22'
 
       - name: Install Dependencies & Build Web
-        working-directory: ./client
         run: |
           npm config set legacy-peer-deps true
           npm install --legacy-peer-deps
-          npm run build
+          npm --workspace=client run build
 
       - name: Sync Capacitor iOS
         working-directory: ./client
         run: |
-          npm config set legacy-peer-deps true
-          npm install @capacitor/ios@7 --legacy-peer-deps
           npx cap add ios || true
           npx cap sync ios
 
