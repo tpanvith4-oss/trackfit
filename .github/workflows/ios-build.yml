@@ -24,7 +24,7 @@ jobs:
       - name: Sync Capacitor iOS
         working-directory: ./client
         run: |
-          npm install @capacitor/ios
+          npm install @capacitor/ios@7
           npx cap add ios || true
           npx cap sync ios
 
