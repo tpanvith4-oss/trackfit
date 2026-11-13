@@ -16,17 +16,17 @@ jobs:
           node-version: '22'
 
       - name: Install Dependencies & Build Web
-          working-directory: ./client
-          run: |
-            npm install --legacy-peer-deps
-            npm run build
+        working-directory: ./client
+        run: |
+          npm install --legacy-peer-deps
+          npm run build
 
-        - name: Sync Capacitor iOS
-          working-directory: ./client
-          run: |
-            npm install @capacitor/ios@7 --legacy-peer-deps
-            npx cap add ios || true
-            npx cap sync ios
+      - name: Sync Capacitor iOS
+        working-directory: ./client
+        run: |
+          npm install @capacitor/ios@7 --legacy-peer-deps
+          npx cap add ios || true
+          npx cap sync ios
 
       - name: Build iOS App (No Code Signing)
         working-directory: ./client/ios/App
