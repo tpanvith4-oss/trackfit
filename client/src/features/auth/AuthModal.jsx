@@ -170,8 +170,12 @@ export function AuthModal() {
         className="relative w-full max-w-sm rounded-3xl border border-slate-800 bg-slate-900/85 p-6 shadow-2xl shadow-black/40 backdrop-blur-xl motion-safe:animate-pop-in"
       >
         <div className="mb-5 text-center">
-          <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-brand-500/15 ring-1 ring-brand-500/30">
-            <img src="favicon.svg" alt="" className="size-7" />
+          <div className="mx-auto mb-4 flex justify-center">
+            <img
+              src="/trackfit-logo.png"
+              alt="TrackFit"
+              className="h-16 w-auto object-contain drop-shadow-sm"
+            />
           </div>
           <h2 id={`${id}-title`} className="text-xl font-bold tracking-tight text-slate-50">
             {copy.title}

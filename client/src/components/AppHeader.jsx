@@ -8,8 +8,9 @@ export function AppHeader({ apiStatus, user, onLogout }) {
   return (
     <header className="sticky top-0 z-10 border-b border-slate-800/80 bg-slate-950/85 pt-[env(safe-area-inset-top)] backdrop-blur">
       <div className="mx-auto flex h-14 max-w-md items-center justify-between px-4">
-        <h1 className="text-lg font-bold tracking-tight">
-          Track<span className="text-brand-400">Fit</span>
+        <h1 className="flex items-center gap-2 text-lg font-bold tracking-tight">
+          <img src="/trackfit-logo.png" alt="" className="h-8 w-auto object-contain" />
+          <span className="sr-only">TrackFit</span>
         </h1>
         <div className="flex items-center gap-2">
           <ThemeToggle />
