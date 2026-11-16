@@ -6,6 +6,11 @@ export const workoutsApi = {
     apiClient.get(`/api/workouts/template/${encodeURIComponent(splitDay)}`, options).then((res) => res.data),
   recovery: (options) => apiClient.get('/api/workouts/recovery', options).then((res) => res.data),
   list: (options) => apiClient.get('/api/workouts', options).then((res) => res.data),
+  history: (exerciseName, { days = 60, ...options } = {}) =>
+    apiClient
+      .get('/api/workouts/history', { ...options, query: { exerciseName, days } })
+      .then((res) => res.data),
+  logSet: (payload) => apiClient.post('/api/workouts/log', payload).then((res) => res.data),
   create: (payload) => apiClient.post('/api/workouts', payload).then((res) => res.data),
   complete: (id, payload = {}) =>
     apiClient.patch(`/api/workouts/${encodeURIComponent(id)}/complete`, payload).then((res) => res.data),

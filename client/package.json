@@ -23,10 +23,11 @@
   "dependencies": {
     "@capacitor/android": "^7.0.0",
     "@capacitor/core": "^7.0.0",
-    "@capacitor/haptics": "^7.0.0",
+    "@capacitor/haptics": "^7.0.5",
     "@capacitor/ios": "^7.0.0",
     "@capacitor/local-notifications": "^7.0.0",
     "@capacitor/preferences": "^7.0.0",
+    "@hassankbrian/capacitor-live-activity": "^7.5.1",
     "lucide-react": "^1.58.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

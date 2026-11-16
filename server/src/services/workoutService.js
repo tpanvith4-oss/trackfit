@@ -191,3 +191,137 @@ export function listWorkoutSessions(userId, { limit = 20 } = {}) {
     include: { sets: { orderBy: [{ exerciseName: 'asc' }, { setNumber: 'asc' }] } },
   });
 }
+
+async function resolveOpenSession(userId, { splitDay, sessionId }) {
+  if (sessionId) {
+    const existing = await prisma.workoutSession.findFirst({
+      where: { id: sessionId, userId, endedAt: null },
+    });
+    if (!existing) throw new HttpError(404, 'Open workout session not found');
+    if (existing.splitDay !== splitDay) {
+      throw new HttpError(400, 'Session split day does not match the logged set');
+    }
+    return existing;
+  }
+
+  const open = await prisma.workoutSession.findFirst({
+    where: { userId, splitDay, endedAt: null },
+    orderBy: { startedAt: 'desc' },
+  });
+  if (open) return open;
+
+  return prisma.workoutSession.create({
+    data: {
+      userId,
+      splitDay,
+      mesocycleWeek: getMesocycleWeek(),
+      startedAt: new Date(),
+    },
+  });
+}
+
+/** Persist one completed working set; creates/reuses an open session for the split day. */
+export async function logWorkoutSet(userId, payload) {
+  if (payload.splitDay === 'REST') throw new HttpError(400, 'Cannot log sets on a rest day');
+
+  const session = await resolveOpenSession(userId, {
+    splitDay: payload.splitDay,
+    sessionId: payload.sessionId,
+  });
+
+  const existingSet = await prisma.workoutSet.findFirst({
+    where: {
+      workoutSessionId: session.id,
+      exerciseName: payload.exerciseName,
+      setNumber: payload.setNumber,
+    },
+  });
+
+  const setData = {
+    exerciseName: payload.exerciseName,
+    primaryMuscle: payload.primaryMuscle,
+    secondaryMuscles: payload.secondaryMuscles ?? [],
+    setNumber: payload.setNumber,
+    weightKg: payload.weightKg ?? 0,
+    reps: payload.reps,
+    rir: payload.rir ?? 1,
+    isWarmup: payload.isWarmup ?? false,
+    isCompleted: true,
+  };
+
+  const set = existingSet
+    ? await prisma.workoutSet.update({ where: { id: existingSet.id }, data: setData })
+    : await prisma.workoutSet.create({
+        data: { ...setData, workoutSessionId: session.id },
+      });
+
+  const exerciseSets = await prisma.workoutSet.findMany({
+    where: {
+      workoutSessionId: session.id,
+      exerciseName: payload.exerciseName,
+      isCompleted: true,
+    },
+    orderBy: { setNumber: 'asc' },
+  });
+
+  const maxLogged = exerciseSets.reduce((max, row) => Math.max(max, row.setNumber), 0);
+
+  return {
+    set,
+    session: { id: session.id, splitDay: session.splitDay, startedAt: session.startedAt },
+    exerciseSets,
+    nextSetNumber: maxLogged + 1,
+    restSeconds: payload.restSeconds ?? null,
+  };
+}
+
+/** Daily volume progression for one exercise (weight × reps summed across completed sets). */
+export async function getExerciseHistory(userId, { exerciseName, days = 60 } = {}) {
+  const since = new Date(Date.now() - days * 86_400_000);
+  const sets = await prisma.workoutSet.findMany({
+    where: {
+      isCompleted: true,
+      isWarmup: false,
+      exerciseName,
+      createdAt: { gte: since },
+      session: { userId },
+    },
+    orderBy: { createdAt: 'asc' },
+    select: {
+      weightKg: true,
+      reps: true,
+      setNumber: true,
+      rir: true,
+      createdAt: true,
+    },
+  });
+
+  const byDay = new Map();
+  for (const set of sets) {
+    const date = set.createdAt.toISOString().slice(0, 10);
+    const volume = Number(set.weightKg) * Number(set.reps);
+    const row = byDay.get(date) ?? {
+      date,
+      volumeKg: 0,
+      totalReps: 0,
+      sets: 0,
+      topWeightKg: 0,
+      topReps: 0,
+    };
+    row.volumeKg += volume;
+    row.totalReps += set.reps;
+    row.sets += 1;
+    if (set.weightKg > row.topWeightKg || (set.weightKg === row.topWeightKg && set.reps > row.topReps)) {
+      row.topWeightKg = set.weightKg;
+      row.topReps = set.reps;
+    }
+    byDay.set(date, row);
+  }
+
+  const points = [...byDay.values()].map((row) => ({
+    ...row,
+    volumeKg: Math.round(row.volumeKg * 10) / 10,
+  }));
+
+  return { exerciseName, days, points };
+}

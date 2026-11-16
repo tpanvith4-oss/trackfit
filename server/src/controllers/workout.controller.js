@@ -25,6 +25,16 @@ export async function complete(req, res) {
   res.json({ data });
 }
 
+export async function logSet(req, res) {
+  const data = await workoutService.logWorkoutSet(req.userId, req.validated.body);
+  res.status(200).json({ data });
+}
+
+export async function exerciseHistory(req, res) {
+  const data = await workoutService.getExerciseHistory(req.userId, req.validated.query);
+  res.json({ data });
+}
+
 export async function defaultSplit(req, res) {
   res.json({ data: { splitDay: workoutService.defaultSplitForDate(new Date()) } });
 }

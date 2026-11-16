@@ -1,30 +1,33 @@
 import { useEffect, useMemo, useState } from 'react';
 import { workoutsApi } from '../../api/workoutsApi.js';
-import { CheckIcon, SpinnerIcon } from '../../components/icons.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { ErrorMessage } from '../../components/ui/StatusMessage.jsx';
 import { RECOVERY_STYLES, SPLIT_DAY_LABELS, WEEKDAY_SPLIT } from '../../constants/cutProtocol.js';
 import { useAsyncData } from '../../hooks/useAsyncData.js';
+import { storage } from '../../services/storageService.js';
+import { ExerciseSetCard } from './ExerciseSetCard.jsx';
+import { RestTimerOverlay } from './RestTimerOverlay.jsx';
+import { WorkoutAnalyticsChart } from './WorkoutAnalyticsChart.jsx';
 
 const SPLIT_OPTIONS = Object.keys(SPLIT_DAY_LABELS);
+const REST_PREF_KEY = 'workout.restSeconds';
+const REST_OPTIONS = [60, 90];
 
 function defaultSplit() {
   return WEEKDAY_SPLIT[new Date().getDay()] ?? 'REST';
 }
 
-function parseRepTarget(reps) {
-  const match = String(reps).match(/(\d+)/);
-  return match ? Number(match[1]) : 10;
-}
-
 export function WorkoutPanel() {
   const [splitDay, setSplitDay] = useState(defaultSplit);
-  const [completed, setCompleted] = useState(() => new Set());
-  const [setDrafts, setSetDrafts] = useState({});
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState(null);
-  const [saveOk, setSaveOk] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
+  const [restSeconds, setRestSeconds] = useState(90);
+  const [chartExercise, setChartExercise] = useState(null);
+  const [timer, setTimer] = useState(null);
+  const [completing, setCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState(null);
+  const [completeOk, setCompleteOk] = useState(false);
+  const [historyTick, setHistoryTick] = useState(0);
 
   const { data: template, error: templateError, loading: templateLoading, reload: reloadTemplate } = useAsyncData(
     (signal) => workoutsApi.template(splitDay, { signal }),
@@ -33,23 +36,23 @@ export function WorkoutPanel() {
   const { data: recoveryData, reload: reloadRecovery } = useAsyncData((signal) => workoutsApi.recovery({ signal }), []);
 
   useEffect(() => {
-    setCompleted(new Set());
-    setSaveOk(false);
-    setSaveError(null);
-  }, [splitDay]);
+    let active = true;
+    storage.get(REST_PREF_KEY, 90).then((value) => {
+      const seconds = Number(value);
+      if (active && REST_OPTIONS.includes(seconds)) setRestSeconds(seconds);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
-    if (!template?.exercises) return;
-    const drafts = {};
-    for (const exercise of template.exercises) {
-      drafts[exercise.exerciseName] = {
-        weightKg: String(exercise.ghost?.weightKg ?? 0),
-        reps: String(exercise.ghost?.reps ?? parseRepTarget(exercise.reps)),
-        rir: String(exercise.ghost?.rir ?? 1),
-      };
-    }
-    setSetDrafts(drafts);
-  }, [template]);
+    setSessionId(null);
+    setCompleteOk(false);
+    setCompleteError(null);
+    setTimer(null);
+    setChartExercise(template?.exercises?.[0]?.exerciseName ?? null);
+  }, [splitDay, template?.exercises]);
 
   const recovery = recoveryData?.recovery ?? {};
 
@@ -65,60 +68,39 @@ export function WorkoutPanel() {
     }));
   }, [template, recovery]);
 
-  const toggleSet = (key) => {
-    setCompleted((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-    setSaveOk(false);
+  const chooseRest = (seconds) => {
+    setRestSeconds(seconds);
+    storage.set(REST_PREF_KEY, seconds);
   };
 
-  const updateDraft = (exerciseName, field) => (event) => {
-    setSetDrafts((prev) => ({
-      ...prev,
-      [exerciseName]: { ...prev[exerciseName], [field]: event.target.value },
-    }));
+  const handleSetLogged = ({ exerciseName, finishedExercise }) => {
+    setChartExercise(exerciseName);
+    setHistoryTick((tick) => tick + 1);
+    reloadRecovery();
+    if (!finishedExercise) {
+      setTimer({ seconds: restSeconds, exerciseName });
+    }
   };
 
-  const handleSave = async () => {
-    if (!template || splitDay === 'REST') return;
-    setSaving(true);
-    setSaveError(null);
-    setSaveOk(false);
+  const finishSession = async () => {
+    if (!sessionId) {
+      setCompleteError(new Error('Log at least one set before finishing the session.'));
+      return;
+    }
+    setCompleting(true);
+    setCompleteError(null);
+    setCompleteOk(false);
     try {
-      const sets = [];
-      for (const exercise of template.exercises) {
-        const draft = setDrafts[exercise.exerciseName] ?? {};
-        for (let setNumber = 1; setNumber <= exercise.sets; setNumber += 1) {
-          const key = `${exercise.exerciseName}:${setNumber}`;
-          if (!completed.has(key)) continue;
-          sets.push({
-            exerciseName: exercise.exerciseName,
-            primaryMuscle: exercise.primaryMuscle,
-            secondaryMuscles: exercise.secondaryMuscles ?? [],
-            setNumber,
-            weightKg: parseFloat(draft.weightKg) || 0,
-            reps: parseInt(draft.reps, 10) || 0,
-            rir: parseInt(draft.rir, 10) || 1,
-            isCompleted: true,
-          });
-        }
-      }
-      if (sets.length === 0) {
-        setSaveError(new Error('Tap at least one set checkmark before saving.'));
-        return;
-      }
-      const session = await workoutsApi.create({ splitDay, sets });
-      await workoutsApi.complete(session.id);
-      setSaveOk(true);
+      await workoutsApi.complete(sessionId);
+      setCompleteOk(true);
+      setSessionId(null);
       reloadTemplate();
       reloadRecovery();
+      setHistoryTick((tick) => tick + 1);
     } catch (err) {
-      setSaveError(err);
+      setCompleteError(err);
     } finally {
-      setSaving(false);
+      setCompleting(false);
     }
   };
 
@@ -153,9 +135,51 @@ export function WorkoutPanel() {
             ))}
           </div>
         )}
+
+        {splitDay !== 'REST' && (
+          <div className="mt-3 flex items-center gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Rest</span>
+            {REST_OPTIONS.map((seconds) => (
+              <button
+                key={seconds}
+                type="button"
+                onClick={() => chooseRest(seconds)}
+                className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${
+                  restSeconds === seconds
+                    ? 'border-brand-500 bg-brand-500/15 text-brand-300'
+                    : 'border-slate-700 text-slate-400 hover:border-slate-500'
+                }`}
+              >
+                {seconds}s
+              </button>
+            ))}
+          </div>
+        )}
       </Card>
 
-      <Card title={SPLIT_DAY_LABELS[splitDay]} subtitle="Ghost loads from your last session · tap sets to complete">
+      {splitDay !== 'REST' && (
+        <Card title="Volume progression" subtitle={chartExercise ?? 'Pick an exercise by logging a set'}>
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {(template?.exercises ?? []).map((exercise) => (
+              <button
+                key={exercise.exerciseName}
+                type="button"
+                onClick={() => setChartExercise(exercise.exerciseName)}
+                className={`rounded-lg border px-2 py-1 text-[11px] font-semibold ${
+                  chartExercise === exercise.exerciseName
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                    : 'border-slate-700 text-slate-400 hover:border-slate-500'
+                }`}
+              >
+                {exercise.exerciseName.split(' ').slice(0, 3).join(' ')}
+              </button>
+            ))}
+          </div>
+          <WorkoutAnalyticsChart key={`${chartExercise}-${historyTick}`} exerciseName={chartExercise} />
+        </Card>
+      )}
+
+      <Card title={SPLIT_DAY_LABELS[splitDay]} subtitle="Check a set to auto-save · rest timer starts after each save">
         <ErrorMessage error={templateError} onRetry={reloadTemplate} />
         {templateLoading && !template ? (
           <div className="h-40 animate-pulse rounded-xl bg-slate-800/40" aria-busy="true" />
@@ -163,90 +187,39 @@ export function WorkoutPanel() {
           <p className="text-sm text-slate-400">Rest day. Recover, hit water/creatine, and keep the food log closed clean.</p>
         ) : (
           <ul className="space-y-3">
-            {(template?.exercises ?? []).map((exercise) => {
-              const draft = setDrafts[exercise.exerciseName] ?? { weightKg: '0', reps: '10', rir: '1' };
-              return (
-                <li key={exercise.exerciseName} className="rounded-xl border border-slate-800 bg-slate-950/40 p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-100">{exercise.exerciseName}</p>
-                      <p className="text-[11px] text-slate-500">
-                        {exercise.sets} × {exercise.reps} · {exercise.overloadHint}
-                        {exercise.ghost && ` · last ${exercise.ghost.weightKg} kg × ${exercise.ghost.reps}`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
-                    <label className="text-[10px] uppercase tracking-wide text-slate-500">
-                      kg
-                      <input
-                        className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm tabular-nums text-slate-100"
-                        type="number"
-                        step="0.5"
-                        value={draft.weightKg}
-                        onChange={updateDraft(exercise.exerciseName, 'weightKg')}
-                      />
-                    </label>
-                    <label className="text-[10px] uppercase tracking-wide text-slate-500">
-                      reps
-                      <input
-                        className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm tabular-nums text-slate-100"
-                        type="number"
-                        value={draft.reps}
-                        onChange={updateDraft(exercise.exerciseName, 'reps')}
-                      />
-                    </label>
-                    <label className="text-[10px] uppercase tracking-wide text-slate-500">
-                      RIR
-                      <input
-                        className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-sm tabular-nums text-slate-100"
-                        type="number"
-                        min="0"
-                        max="5"
-                        value={draft.rir}
-                        onChange={updateDraft(exercise.exerciseName, 'rir')}
-                      />
-                    </label>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {Array.from({ length: exercise.sets }, (_, index) => {
-                      const setNumber = index + 1;
-                      const key = `${exercise.exerciseName}:${setNumber}`;
-                      const done = completed.has(key);
-                      return (
-                        <button
-                          key={key}
-                          type="button"
-                          aria-pressed={done}
-                          onClick={() => toggleSet(key)}
-                          className={`inline-flex size-8 items-center justify-center rounded-lg border text-xs font-bold transition ${
-                            done
-                              ? 'border-brand-500 bg-brand-500/20 text-brand-300'
-                              : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-500'
-                          }`}
-                        >
-                          {done ? <CheckIcon className="size-4" /> : setNumber}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </li>
-              );
-            })}
+            {(template?.exercises ?? []).map((exercise) => (
+              <ExerciseSetCard
+                key={exercise.exerciseName}
+                exercise={exercise}
+                splitDay={splitDay}
+                sessionId={sessionId}
+                restSeconds={restSeconds}
+                onSession={setSessionId}
+                onSetLogged={handleSetLogged}
+              />
+            ))}
           </ul>
         )}
 
         {splitDay !== 'REST' && (
           <div className="mt-4 space-y-2">
-            <ErrorMessage error={saveError} />
-            {saveOk && <p className="text-xs text-brand-300">Session saved. Recovery badges refreshed.</p>}
-            <Button type="button" className="w-full" disabled={saving} onClick={handleSave}>
-              {saving && <SpinnerIcon className="size-4" />}
-              {saving ? 'Saving session…' : 'Save completed sets'}
+            <ErrorMessage error={completeError} />
+            {completeOk && <p className="text-xs text-brand-300">Session finished. Recovery badges refreshed.</p>}
+            <Button type="button" className="w-full" disabled={completing || !sessionId} onClick={finishSession}>
+              {completing ? 'Finishing…' : 'Finish session'}
             </Button>
           </div>
         )}
       </Card>
+
+      {timer && (
+        <RestTimerOverlay
+          seconds={timer.seconds}
+          exerciseName={timer.exerciseName}
+          onDone={() => setTimer(null)}
+          onSkip={() => setTimer(null)}
+        />
+      )}
     </div>
   );
 }

@@ -86,6 +86,25 @@ export const completeWorkoutSchema = z.object({
   notes: z.string().trim().max(500).optional().nullable(),
 });
 
+export const logWorkoutSetSchema = z.object({
+  splitDay: z.enum(SPLIT_DAYS),
+  sessionId: z.string().cuid().optional(),
+  exerciseName: z.string().trim().min(1).max(120),
+  primaryMuscle: z.enum(MUSCLE_GROUPS),
+  secondaryMuscles: z.array(z.enum(MUSCLE_GROUPS)).default([]),
+  setNumber: z.number().int().min(1).max(20),
+  weightKg: z.number().min(0).max(500).default(0),
+  reps: z.number().int().min(1).max(100),
+  rir: z.number().int().min(0).max(10).default(1),
+  isWarmup: z.boolean().optional().default(false),
+  restSeconds: z.number().int().min(0).max(600).optional(),
+});
+
+export const exerciseHistoryQuerySchema = z.object({
+  exerciseName: z.string().trim().min(1).max(120),
+  days: z.coerce.number().int().min(7).max(180).default(60),
+});
+
 export const energyQuerySchema = z.object({
   days: z.coerce.number().int().min(1).max(30).default(7),
   endDate: z.coerce.date().optional(),
