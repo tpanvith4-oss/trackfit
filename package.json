@@ -25,7 +25,10 @@
     "db:studio": "npm run db:studio --workspace server",
     "android:add": "npm run android:add --workspace client",
     "android:sync": "npm run android:sync --workspace client",
-    "android:open": "npm run android:open --workspace client"
+    "android:open": "npm run android:open --workspace client",
+    "ios:add": "npm run ios:add --workspace client",
+    "ios:sync": "npm run ios:sync --workspace client",
+    "ios:open": "npm run ios:open --workspace client"
   },
   "devDependencies": {
     "concurrently": "^9.2.5"

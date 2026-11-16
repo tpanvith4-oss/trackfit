@@ -6,8 +6,13 @@ import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 import { HttpError } from './utils/HttpError.js';
 
-// Capacitor WebView origins (Android https/http schemes, iOS).
-const NATIVE_APP_ORIGINS = ['https://localhost', 'http://localhost', 'capacitor://localhost'];
+// Capacitor WebView origins (Android https/http schemes; iOS https + capacitor schemes).
+const NATIVE_APP_ORIGINS = [
+  'https://localhost',
+  'http://localhost',
+  'capacitor://localhost',
+  'ionic://localhost',
+];
 
 // Always allowed browser origins (local Vite + Firebase Hosting).
 const DEFAULT_WEB_ORIGINS = [

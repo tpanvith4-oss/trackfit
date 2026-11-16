@@ -10,11 +10,15 @@
     "dev": "vite",
     "build": "vite build",
     "build:android": "vite build --mode android",
+    "build:ios": "vite build --mode ios",
     "preview": "vite preview",
     "android:add": "npm run build:android && cap add android && npm run android:assets",
     "android:sync": "npm run build:android && cap sync android && npm run android:assets",
     "android:assets": "node scripts/generate-alarm-sound.mjs",
-    "android:open": "cap open android"
+    "android:open": "cap open android",
+    "ios:add": "npm run build:ios && cap add ios",
+    "ios:sync": "npm run build:ios && cap sync ios",
+    "ios:open": "cap open ios"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",

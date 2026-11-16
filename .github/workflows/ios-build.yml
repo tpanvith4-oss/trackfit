@@ -15,11 +15,17 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install Dependencies & Build Web
+      # .env / .env.ios are gitignored. Without this, Vite falls back to
+      # http://localhost:4000 and the IPA cannot reach the hosted API on device
+      # (and iOS ATS blocks cleartext HTTP).
+      - name: Install Dependencies & Build Web (iOS)
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://trackfit-o6zn.onrender.com' }}
         run: |
           npm config set legacy-peer-deps true
           npm install --legacy-peer-deps
-          npm --workspace=client run build
+          printf 'VITE_API_BASE_URL=%s\n' "$VITE_API_BASE_URL" > client/.env.ios
+          npm --workspace=client run build:ios
 
       - name: Sync Capacitor iOS
         working-directory: ./client
