@@ -1,40 +1,66 @@
 import { useEffect, useState } from 'react';
 import { healthApi } from '../api/healthApi.js';
 
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 5_000;
+const WAKING_STATUSES = new Set([0, 408, 502, 503, 504]);
 
-/** @returns {'checking' | 'online' | 'degraded' | 'offline'} */
+/** @returns {'checking' | 'waking' | 'online' | 'degraded' | 'offline'} */
 export function useApiHealth() {
   const [status, setStatus] = useState('checking');
 
   useEffect(() => {
-    let controller;
     let cancelled = false;
+    let inFlight = false;
+    let consecutiveFailures = 0;
 
-    const check = async () => {
-      controller?.abort();
-      controller = new AbortController();
+    const check = async ({ wake = false } = {}) => {
+      if (cancelled || inFlight) return;
+      inFlight = true;
+
       try {
-        const res = await healthApi.check({ signal: controller.signal });
+        const result = await healthApi.wake();
         if (cancelled) return;
-        // Backend returns `{ status: "ok" }` — not `success: true`.
-        setStatus(res?.status === 'ok' ? 'online' : 'degraded');
+        consecutiveFailures = 0;
+        setStatus(result.online ? 'online' : 'degraded');
       } catch (err) {
-        if (cancelled || controller.signal.aborted) return;
-        setStatus(err.status === 503 ? 'degraded' : 'offline');
+        if (cancelled) return;
+        consecutiveFailures += 1;
+        const code = err?.status ?? 0;
+
+        // Cold-start / gateway blips: keep trying without flipping to hard offline yet.
+        if (WAKING_STATUSES.has(code) || wake || consecutiveFailures < 3) {
+          setStatus((prev) => (prev === 'online' ? 'online' : 'waking'));
+        } else if (code === 503) {
+          setStatus('degraded');
+        } else {
+          setStatus('offline');
+        }
+      } finally {
+        inFlight = false;
       }
     };
 
-    check();
-    const intervalId = setInterval(check, POLL_INTERVAL_MS);
-    const onVisible = () => document.visibilityState === 'visible' && check();
+    // Immediate wake on app open (login + every other screen that mounts App).
+    check({ wake: true });
+
+    const intervalId = setInterval(() => check(), POLL_INTERVAL_MS);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') check({ wake: true });
+    };
+    const onFocus = () => check({ wake: true });
+    const onOnline = () => check({ wake: true });
+
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('online', onOnline);
 
     return () => {
       cancelled = true;
       clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVisible);
-      controller?.abort();
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('online', onOnline);
     };
   }, []);
 

@@ -61,12 +61,14 @@ export function createApp() {
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
 
-  // Health FIRST — before morgan/cors/body parsers — so keep-alive never waits on them.
+  // CORS before health so Capacitor WebViews (https://localhost) can read the response.
+  // Keep this ahead of body parsers / heavy routers so Render wake checks stay cheap.
+  app.use(cors(corsOptions));
+
   app.get('/health', sendOk);
   app.get('/api/health', sendOk);
 
   app.use(morgan(isProduction ? 'combined' : 'dev'));
-  app.use(cors(corsOptions));
   app.use(express.json({ limit: '100kb' }));
 
   return app;
