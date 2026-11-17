@@ -10,12 +10,20 @@ function formatClock(totalSeconds) {
   return `${minutes}:${seconds}`;
 }
 
+/**
+ * Starts (or replaces) the rest Live Activity for Dynamic Island / Lock Screen.
+ * Returns true only when iOS accepted the activity — callers should hide the blocking UI.
+ */
 export async function startRestLiveActivity({ seconds, exerciseName }) {
   if (Capacitor.getPlatform() !== 'ios') return false;
   try {
     const available = await LiveActivity.isAvailable();
     if (!available) return false;
-    await LiveActivity.startOrUpdateActivity({
+
+    const endsAtMs = Date.now() + Math.max(0, seconds) * 1000;
+    const endsAt = new Date(endsAtMs).toISOString();
+
+    await LiveActivity.startSingleActivity({
       id: ACTIVITY_ID,
       attributes: {
         type: 'rest-timer',
@@ -25,6 +33,9 @@ export async function startRestLiveActivity({ seconds, exerciseName }) {
         title: 'Rest',
         status: formatClock(seconds),
         message: exerciseName ? `Next: ${exerciseName}` : 'Break between sets',
+        // Widget uses this for native SwiftUI timerInterval countdown (works in background).
+        endsAt,
+        endsAtEpoch: String(Math.floor(endsAtMs / 1000)),
       },
       timestamp: Math.floor(Date.now() / 1000),
     });
@@ -34,15 +45,18 @@ export async function startRestLiveActivity({ seconds, exerciseName }) {
   }
 }
 
-export async function updateRestLiveActivity(secondsLeft) {
+export async function updateRestLiveActivity(secondsLeft, { exerciseName } = {}) {
   if (Capacitor.getPlatform() !== 'ios') return;
   try {
+    const endsAtMs = Date.now() + Math.max(0, secondsLeft) * 1000;
     await LiveActivity.updateActivity({
       id: ACTIVITY_ID,
       contentState: {
         title: 'Rest',
         status: formatClock(secondsLeft),
-        message: secondsLeft > 0 ? 'Recovering…' : 'Ready',
+        message: secondsLeft > 0 ? (exerciseName ? `Next: ${exerciseName}` : 'Recovering…') : 'Ready',
+        endsAt: new Date(endsAtMs).toISOString(),
+        endsAtEpoch: String(Math.floor(endsAtMs / 1000)),
       },
       timestamp: Math.floor(Date.now() / 1000),
     });
@@ -60,6 +74,8 @@ export async function endRestLiveActivity() {
         title: 'Rest',
         status: '0:00',
         message: 'Ready for next set',
+        endsAt: new Date().toISOString(),
+        endsAtEpoch: String(Math.floor(Date.now() / 1000)),
       },
       timestamp: Math.floor(Date.now() / 1000),
     });

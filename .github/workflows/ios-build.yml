@@ -32,6 +32,7 @@ jobs:
         run: |
           npx cap add ios || true
           npx cap sync ios
+          bash scripts/ios-enable-live-activities.sh
 
       - name: Build iOS App (No Code Signing)
         working-directory: ./client/ios/App

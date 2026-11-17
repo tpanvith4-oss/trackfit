@@ -1,7 +1,6 @@
 import { Haptics } from '@capacitor/haptics';
 import { useEffect, useRef, useState } from 'react';
 import { endRestLiveActivity, startRestLiveActivity, updateRestLiveActivity } from '../../services/restLiveActivity.js';
-import { Button } from '../../components/ui/Button.jsx';
 
 function formatClock(totalSeconds) {
   const safe = Math.max(0, Math.ceil(totalSeconds));
@@ -11,11 +10,13 @@ function formatClock(totalSeconds) {
 }
 
 /**
- * Full-screen rest countdown. No audio — haptics only when finished.
- * Live Activity / Dynamic Island is best-effort on iOS.
+ * Non-blocking rest countdown.
+ * On iOS, prefers Dynamic Island / Live Activity and only shows a tiny Skip chip.
+ * Elsewhere (and iOS fallback): a compact floating pill — never a full-screen modal.
  */
 export function RestTimerOverlay({ seconds, exerciseName, onDone, onSkip }) {
   const [remaining, setRemaining] = useState(seconds);
+  const [islandActive, setIslandActive] = useState(false);
   const finishedRef = useRef(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
@@ -23,10 +24,12 @@ export function RestTimerOverlay({ seconds, exerciseName, onDone, onSkip }) {
   useEffect(() => {
     finishedRef.current = false;
     setRemaining(seconds);
+    setIslandActive(false);
     let cancelled = false;
 
     (async () => {
-      await startRestLiveActivity({ seconds, exerciseName });
+      const started = await startRestLiveActivity({ seconds, exerciseName });
+      if (!cancelled) setIslandActive(Boolean(started));
     })();
 
     const startedAt = Date.now();
@@ -35,7 +38,7 @@ export function RestTimerOverlay({ seconds, exerciseName, onDone, onSkip }) {
       const left = Math.max(0, seconds - (Date.now() - startedAt) / 1000);
       const rounded = Math.ceil(left);
       setRemaining(rounded);
-      updateRestLiveActivity(rounded);
+      updateRestLiveActivity(rounded, { exerciseName });
 
       if (left <= 0 && !finishedRef.current) {
         finishedRef.current = true;
@@ -44,7 +47,7 @@ export function RestTimerOverlay({ seconds, exerciseName, onDone, onSkip }) {
         endRestLiveActivity();
         onDoneRef.current?.();
       }
-    }, 200);
+    }, 250);
 
     return () => {
       cancelled = true;
@@ -53,39 +56,61 @@ export function RestTimerOverlay({ seconds, exerciseName, onDone, onSkip }) {
     };
   }, [seconds, exerciseName]);
 
+  const skip = () => {
+    endRestLiveActivity();
+    onSkip?.();
+  };
+
   const progress = seconds > 0 ? Math.min(1, remaining / seconds) : 0;
+
+  // Dynamic Island owns the timer — keep the workout list fully scrollable/usable.
+  if (islandActive) {
+    return (
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 flex justify-center px-4">
+        <div className="pointer-events-auto flex max-w-sm items-center gap-3 rounded-full border border-slate-700/80 bg-slate-950/90 px-3 py-2 shadow-lg shadow-black/30 backdrop-blur">
+          <span className="size-2 shrink-0 animate-pulse rounded-full bg-brand-400" aria-hidden />
+          <p className="min-w-0 text-xs text-slate-300">
+            Resting in Dynamic Island · <span className="font-mono tabular-nums text-slate-100">{formatClock(remaining)}</span>
+          </p>
+          <button
+            type="button"
+            onClick={skip}
+            className="shrink-0 rounded-full border border-slate-600 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:border-slate-400"
+          >
+            Skip
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/80 p-4 backdrop-blur-sm sm:items-center"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Rest timer"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 flex justify-center px-4"
+      role="status"
+      aria-live="polite"
+      aria-label={`Rest timer ${formatClock(remaining)}`}
     >
-      <div className="w-full max-w-sm rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl shadow-black/40">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Rest</p>
-        <p className="mt-1 truncate text-sm text-slate-300">{exerciseName || 'Next set'}</p>
-        <p className="mt-4 text-center font-mono text-5xl font-semibold tabular-nums text-slate-50">
-          {formatClock(remaining)}
-        </p>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-800">
+      <div className="pointer-events-auto w-full max-w-sm overflow-hidden rounded-2xl border border-slate-700 bg-slate-950/95 shadow-xl shadow-black/40 backdrop-blur">
+        <div className="flex items-center gap-3 px-3 py-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Rest</p>
+            <p className="truncate text-xs text-slate-400">{exerciseName || 'Next set'}</p>
+          </div>
+          <p className="font-mono text-2xl font-semibold tabular-nums text-slate-50">{formatClock(remaining)}</p>
+          <button
+            type="button"
+            onClick={skip}
+            className="rounded-xl border border-slate-600 px-2.5 py-1.5 text-[11px] font-semibold text-slate-200 hover:border-slate-400"
+          >
+            Skip
+          </button>
+        </div>
+        <div className="h-1 bg-slate-800">
           <div
-            className="h-full rounded-full bg-brand-500 transition-[width] duration-200 ease-linear"
+            className="h-full bg-brand-500 transition-[width] duration-200 ease-linear"
             style={{ width: `${progress * 100}%` }}
           />
-        </div>
-        <div className="mt-5 flex gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            className="flex-1"
-            onClick={() => {
-              endRestLiveActivity();
-              onSkip?.();
-            }}
-          >
-            Skip rest
-          </Button>
         </div>
       </div>
     </div>
