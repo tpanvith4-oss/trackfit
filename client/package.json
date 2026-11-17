@@ -18,7 +18,6 @@
     "android:open": "cap open android",
     "ios:add": "npm run build:ios && cap add ios",
     "ios:sync": "npm run build:ios && cap sync ios",
-    "ios:live-activity": "bash scripts/ios-enable-live-activities.sh",
     "ios:open": "cap open ios"
   },
   "dependencies": {
@@ -26,9 +25,8 @@
     "@capacitor/core": "^7.0.0",
     "@capacitor/haptics": "^7.0.5",
     "@capacitor/ios": "^7.0.0",
-    "@capacitor/local-notifications": "^7.0.0",
+    "@capacitor/local-notifications": "^7.0.7",
     "@capacitor/preferences": "^7.0.0",
-    "@hassankbrian/capacitor-live-activity": "^7.5.1",
     "lucide-react": "^1.58.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

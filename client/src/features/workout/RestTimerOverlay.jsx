@@ -1,12 +1,12 @@
 import { Capacitor } from '@capacitor/core';
-import { LocalNotifications } from '@capacitor/local-notifications';
 import { Haptics } from '@capacitor/haptics';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { useEffect, useRef, useState } from 'react';
 import {
   cancelBackgroundRestTimer,
   isRestNotification,
+  requestRestNotificationPermission,
   startBackgroundRestTimer,
-  tickBackgroundRestTimer,
 } from '../../services/restBackgroundTimer.js';
 
 function formatClock(totalSeconds) {
@@ -17,15 +17,12 @@ function formatClock(totalSeconds) {
 }
 
 /**
- * Rest timer controller.
- * - Native: no floating/blurred overlay. Runs via Local Notification (background vibrate/alert)
- *   + Live Activity when available. Only a compact inline strip is shown.
- * - Web: small inline strip, no backdrop blur / no full-screen sheet.
+ * Inline rest countdown + Local Notification when the timer ends (works in background).
+ * Foreground: Haptics.vibrate() at zero. No Live Activities / Dynamic Island.
  */
 export function RestTimerOverlay({ seconds, exerciseName, onDone, onSkip }) {
   const [remaining, setRemaining] = useState(seconds);
-  const [bgArmed, setBgArmed] = useState(false);
-  const [islandActive, setIslandActive] = useState(false);
+  const [armed, setArmed] = useState(false);
   const finishedRef = useRef(false);
   const onDoneRef = useRef(onDone);
   onDoneRef.current = onDone;
@@ -41,17 +38,18 @@ export function RestTimerOverlay({ seconds, exerciseName, onDone, onSkip }) {
   useEffect(() => {
     finishedRef.current = false;
     setRemaining(seconds);
-    setBgArmed(false);
+    setArmed(false);
     let cancelled = false;
     let tickId = 0;
     let receivedHandle;
     let actionHandle;
 
     (async () => {
+      await requestRestNotificationPermission();
+      if (cancelled) return;
       const started = await startBackgroundRestTimer({ seconds, exerciseName });
       if (cancelled) return;
-      setIslandActive(Boolean(started.island));
-      setBgArmed(Boolean(started.notificationScheduled || started.island));
+      setArmed(Boolean(started.notificationScheduled));
 
       if (Capacitor.isNativePlatform()) {
         receivedHandle = await LocalNotifications.addListener('localNotificationReceived', (notification) => {
@@ -67,9 +65,7 @@ export function RestTimerOverlay({ seconds, exerciseName, onDone, onSkip }) {
     tickId = window.setInterval(() => {
       if (cancelled || finishedRef.current) return;
       const left = Math.max(0, seconds - (Date.now() - startedAt) / 1000);
-      const rounded = Math.ceil(left);
-      setRemaining(rounded);
-      tickBackgroundRestTimer(rounded, { exerciseName });
+      setRemaining(Math.ceil(left));
       if (left <= 0) {
         window.clearInterval(tickId);
         finish();
@@ -78,8 +74,7 @@ export function RestTimerOverlay({ seconds, exerciseName, onDone, onSkip }) {
 
     const onVisible = () => {
       if (document.visibilityState !== 'visible' || finishedRef.current) return;
-      const left = seconds - (Date.now() - startedAt) / 1000;
-      if (left <= 0) finish();
+      if (seconds - (Date.now() - startedAt) / 1000 <= 0) finish();
     };
     document.addEventListener('visibilitychange', onVisible);
 
@@ -91,7 +86,6 @@ export function RestTimerOverlay({ seconds, exerciseName, onDone, onSkip }) {
       actionHandle?.remove();
       cancelBackgroundRestTimer();
     };
-    // finish/onDone are stable via refs
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seconds, exerciseName]);
 
@@ -101,44 +95,34 @@ export function RestTimerOverlay({ seconds, exerciseName, onDone, onSkip }) {
     onSkip?.();
   };
 
-  // Dynamic Island is showing the countdown — keep Train clean; only a Skip control.
-  if (islandActive) {
-    return (
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-brand-500/30 bg-brand-500/10 px-3 py-2">
-        <p className="text-xs text-brand-200">Resting in Dynamic Island · {formatClock(remaining)}</p>
-        <button
-          type="button"
-          onClick={skip}
-          className="rounded-lg border border-brand-500/40 px-2.5 py-1 text-[11px] font-semibold text-brand-100"
-        >
-          Skip
-        </button>
-      </div>
-    );
-  }
+  const progress = seconds > 0 ? Math.min(1, remaining / seconds) : 0;
 
-  // Fallback (no Island yet): slim inline strip — no floating blur overlay.
   return (
     <div
-      className="flex items-center gap-3 rounded-xl border border-slate-700/80 bg-slate-900 px-3 py-2"
+      className="flex flex-col gap-2 rounded-xl border border-slate-700/80 bg-slate-900 px-3 py-2"
       role="status"
       aria-live="polite"
       aria-label={`Rest timer ${formatClock(remaining)}`}
     >
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-          {bgArmed && Capacitor.isNativePlatform() ? 'Rest · notification armed' : 'Rest'}
-        </p>
-        <p className="truncate text-xs text-slate-400">{exerciseName || 'Next set'}</p>
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            {armed ? 'Rest · notification armed' : 'Rest'}
+          </p>
+          <p className="truncate text-xs text-slate-400">{exerciseName || 'Next set'}</p>
+        </div>
+        <p className="font-mono text-lg font-semibold tabular-nums text-slate-100">{formatClock(remaining)}</p>
+        <button
+          type="button"
+          onClick={skip}
+          className="rounded-lg border border-slate-600 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:border-slate-400"
+        >
+          Skip
+        </button>
       </div>
-      <p className="font-mono text-lg font-semibold tabular-nums text-slate-100">{formatClock(remaining)}</p>
-      <button
-        type="button"
-        onClick={skip}
-        className="rounded-lg border border-slate-600 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:border-slate-400"
-      >
-        Skip
-      </button>
+      <div className="h-1 overflow-hidden rounded-full bg-slate-800">
+        <div className="h-full bg-brand-500 transition-[width] duration-200 ease-linear" style={{ width: `${progress * 100}%` }} />
+      </div>
     </div>
   );
 }

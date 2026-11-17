@@ -33,8 +33,6 @@ jobs:
           rm -rf ios
           npx cap add ios
           npx cap sync ios
-          gem install xcodeproj --no-document
-          bash scripts/ios-enable-live-activities.sh
 
       - name: Build iOS App (No Code Signing)
         working-directory: ./client/ios/App

@@ -14,7 +14,6 @@ def capacitor_pods
   pod 'CapacitorHaptics', :path => '../../../node_modules/@capacitor/haptics'
   pod 'CapacitorLocalNotifications', :path => '../../../node_modules/@capacitor/local-notifications'
   pod 'CapacitorPreferences', :path => '../../../node_modules/@capacitor/preferences'
-  pod 'HassankbrianCapacitorLiveActivity', :path => '../../../node_modules/@hassankbrian/capacitor-live-activity'
 end
 
 target 'App' do

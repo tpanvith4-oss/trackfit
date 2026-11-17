@@ -5,6 +5,7 @@ import { Card } from '../../components/ui/Card.jsx';
 import { ErrorMessage } from '../../components/ui/StatusMessage.jsx';
 import { RECOVERY_STYLES, SPLIT_DAY_LABELS, WEEKDAY_SPLIT } from '../../constants/cutProtocol.js';
 import { useAsyncData } from '../../hooks/useAsyncData.js';
+import { requestRestNotificationPermission } from '../../services/restBackgroundTimer.js';
 import { storage } from '../../services/storageService.js';
 import { ExerciseSetCard } from './ExerciseSetCard.jsx';
 import { RestTimerOverlay } from './RestTimerOverlay.jsx';
@@ -21,7 +22,7 @@ function defaultSplit() {
 export function WorkoutPanel() {
   const [splitDay, setSplitDay] = useState(defaultSplit);
   const [sessionId, setSessionId] = useState(null);
-  const [restSeconds, setRestSeconds] = useState(90);
+  const [restSeconds, setRestSeconds] = useState(60);
   const [chartExercise, setChartExercise] = useState(null);
   const [timer, setTimer] = useState(null);
   const [completing, setCompleting] = useState(false);
@@ -37,10 +38,11 @@ export function WorkoutPanel() {
 
   useEffect(() => {
     let active = true;
-    storage.get(REST_PREF_KEY, 90).then((value) => {
+    storage.get(REST_PREF_KEY, 60).then((value) => {
       const seconds = Number(value);
       if (active && REST_OPTIONS.includes(seconds)) setRestSeconds(seconds);
     });
+    requestRestNotificationPermission();
     return () => {
       active = false;
     };
@@ -181,7 +183,7 @@ export function WorkoutPanel() {
 
       <Card
         title={SPLIT_DAY_LABELS[splitDay]}
-        subtitle="Check a set to auto-save · rest continues in the background with a notification when time is up"
+        subtitle="Check a set to auto-save · rest timer notifies you when time is up"
       >
         <ErrorMessage error={templateError} onRetry={reloadTemplate} />
         {timer && (
