@@ -63,9 +63,19 @@ jobs:
       - name: Package to IPA
         working-directory: ./client/ios/App
         run: |
-          APP_PATH=$(find build ~/Library/Developer/Xcode/DerivedData -name "App.app" -type d 2>/dev/null | head -n 1)
-          echo "Found compiled app at: $APP_PATH"
+          echo "Locating App.app..."
+          # Find the App.app directory inside the build folder
+          APP_PATH=$(find build -name "App.app" -type d | head -n 1)
+
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: App.app not found in the build directory."
+            exit 1
+          fi
+
+          echo "Found App.app at: $APP_PATH"
+
           mkdir -p Payload
+          # Use cp -R instead of mv to avoid cross-device link errors, then zip
           cp -R "$APP_PATH" Payload/App.app
           zip -r TrackFit.ipa Payload
 
