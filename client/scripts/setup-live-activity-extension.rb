@@ -101,18 +101,23 @@ ent_ref = group.new_file(File.join(EXT_NAME, 'TrackFitLiveActivity.entitlements'
 plist_ref
 ent_ref
 
-# Embed the appex into the host app.
+# Embed the appex into the host app (PlugIns = :plug_ins, not the string "13").
 embed = app_target.copy_files_build_phases.find { |p| p.name == 'Embed Foundation Extensions' }
 unless embed
   embed = project.new(Xcodeproj::Project::Object::PBXCopyFilesBuildPhase)
   embed.name = 'Embed Foundation Extensions'
-  embed.symbol_dst_subfolder_spec = '13' # PlugIns
+  embed.symbol_dst_subfolder_spec = :plug_ins
   app_target.build_phases << embed
 end
 
 product_ref = ext_target.product_reference
-embed.add_file_reference(product_ref)
-embed.build_file(product_ref).settings = { 'ATTRIBUTES' => ['RemoveHeadersOnCopy'] }
+begin
+  embed.add_file_reference(product_ref)
+  bf = embed.build_file(product_ref)
+  bf.settings = { 'ATTRIBUTES' => ['CodeSignOnCopy', 'RemoveHeadersOnCopy'] } if bf
+rescue StandardError => e
+  warn "[live-activity] Embed phase warning (continuing): #{e.message}"
+end
 
 # Ensure App depends on the extension build.
 app_target.add_dependency(ext_target)
