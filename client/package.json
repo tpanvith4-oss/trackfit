@@ -18,6 +18,7 @@
     "android:open": "cap open android",
     "ios:add": "npm run build:ios && cap add ios",
     "ios:sync": "npm run build:ios && cap sync ios",
+    "ios:live-activity": "bash scripts/ios-enable-live-activities.sh",
     "ios:open": "cap open ios"
   },
   "dependencies": {

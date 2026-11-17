@@ -27,11 +27,12 @@ jobs:
           printf 'VITE_API_BASE_URL=%s\n' "$VITE_API_BASE_URL" > client/.env.ios
           npm --workspace=client run build:ios
 
-      - name: Sync Capacitor iOS
+      - name: Sync Capacitor iOS + Dynamic Island extension
         working-directory: ./client
         run: |
           npx cap add ios || true
           npx cap sync ios
+          gem install xcodeproj --no-document
           bash scripts/ios-enable-live-activities.sh
 
       - name: Build iOS App (No Code Signing)

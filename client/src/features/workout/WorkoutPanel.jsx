@@ -179,14 +179,25 @@ export function WorkoutPanel() {
         </Card>
       )}
 
-      <Card title={SPLIT_DAY_LABELS[splitDay]} subtitle="Check a set to auto-save · rest timer starts after each save">
+      <Card
+        title={SPLIT_DAY_LABELS[splitDay]}
+        subtitle="Check a set to auto-save · rest continues in the background with a notification when time is up"
+      >
         <ErrorMessage error={templateError} onRetry={reloadTemplate} />
+        {timer && (
+          <RestTimerOverlay
+            seconds={timer.seconds}
+            exerciseName={timer.exerciseName}
+            onDone={() => setTimer(null)}
+            onSkip={() => setTimer(null)}
+          />
+        )}
         {templateLoading && !template ? (
           <div className="h-40 animate-pulse rounded-xl bg-slate-800/40" aria-busy="true" />
         ) : splitDay === 'REST' ? (
           <p className="text-sm text-slate-400">Rest day. Recover, hit water/creatine, and keep the food log closed clean.</p>
         ) : (
-          <ul className="space-y-3">
+          <ul className={`space-y-3 ${timer ? 'mt-3' : ''}`}>
             {(template?.exercises ?? []).map((exercise) => (
               <ExerciseSetCard
                 key={exercise.exerciseName}
@@ -211,15 +222,6 @@ export function WorkoutPanel() {
           </div>
         )}
       </Card>
-
-      {timer && (
-        <RestTimerOverlay
-          seconds={timer.seconds}
-          exerciseName={timer.exerciseName}
-          onDone={() => setTimer(null)}
-          onSkip={() => setTimer(null)}
-        />
-      )}
     </div>
   );
 }
