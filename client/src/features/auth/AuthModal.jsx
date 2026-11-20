@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { SpinnerIcon } from '../../components/icons.jsx';
+import { TrackFitLogo } from '../../components/TrackFitLogo.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Field, fieldErrorId, Input } from '../../components/ui/Field.jsx';
 import { ErrorMessage } from '../../components/ui/StatusMessage.jsx';
@@ -171,11 +172,7 @@ export function AuthModal() {
       >
         <div className="mb-5 text-center">
           <div className="mx-auto mb-4 flex justify-center">
-            <img
-              src="/trackfit-logo.png"
-              alt="TrackFit"
-              className="h-16 w-auto object-contain drop-shadow-sm"
-            />
+            <TrackFitLogo size="lg" alt="TrackFit" className="drop-shadow-sm" />
           </div>
           <h2 id={`${id}-title`} className="text-xl font-bold tracking-tight text-slate-50">
             {copy.title}

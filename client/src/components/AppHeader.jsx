@@ -1,6 +1,7 @@
 import { getApiStatusStyle } from './apiStatus.js';
 import { ProfileMenu } from './ProfileMenu.jsx';
 import { ThemeToggle } from './ThemeToggle.jsx';
+import { TrackFitLogo } from './TrackFitLogo.jsx';
 
 export function AppHeader({ apiStatus, user, onLogout }) {
   const status = getApiStatusStyle(apiStatus);
@@ -9,7 +10,7 @@ export function AppHeader({ apiStatus, user, onLogout }) {
     <header className="sticky top-0 z-10 border-b border-slate-800/80 bg-slate-950/85 pt-[env(safe-area-inset-top)] backdrop-blur">
       <div className="mx-auto flex h-14 max-w-md items-center justify-between px-4">
         <h1 className="flex items-center gap-2 text-lg font-bold tracking-tight">
-          <img src="/trackfit-logo.png" alt="" className="h-8 w-auto object-contain" />
+          <TrackFitLogo size="sm" />
           <span className="sr-only">TrackFit</span>
         </h1>
         <div className="flex items-center gap-2">

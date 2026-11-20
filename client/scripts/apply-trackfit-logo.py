@@ -1,15 +1,52 @@
-"""Generate TrackFit launcher, splash, and web logo assets from the brand PNG."""
+"""Generate TrackFit launcher, splash, and web logo assets from the brand PNG.
+
+Applies blunt/rounded edges so the mark never shows sharp square corners.
+"""
 
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 SRC = Path(
     r"C:\Users\tpanv\.cursor\projects\c-personal-projects-Food-Tracking-app\assets\image-1fe7f733-5c26-4ace-a836-7675e26fddb6.png"
 )
+# Prefer the softened master when present (produced by soften-trackfit-logo.py).
+SOFTENED = Path(
+    r"C:\Users\tpanv\.cursor\projects\c-personal-projects-Food-Tracking-app\assets\trackfit-logo-blunt.png"
+)
 CLIENT = Path(__file__).resolve().parents[1]
 RES = CLIENT / "android" / "app" / "src" / "main" / "res"
 PUBLIC = CLIENT / "public"
+IOS_ICON = CLIENT / "ios" / "App" / "App" / "Assets.xcassets" / "AppIcon.appiconset" / "AppIcon-512@2x.png"
+
+
+def apply_rounded_rect_mask(img, radius_ratio=0.2):
+    rgba = img.convert("RGBA")
+    w, h = rgba.size
+    radius = max(8, int(min(w, h) * radius_ratio))
+    mask = Image.new("L", (w, h), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle((0, 0, w - 1, h - 1), radius=radius, fill=255)
+    out = rgba.copy()
+    out.putalpha(mask)
+    return out
+
+
+def apply_circle_mask(img):
+    rgba = img.convert("RGBA")
+    w, h = rgba.size
+    mask = Image.new("L", (w, h), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.ellipse((0, 0, w - 1, h - 1), fill=255)
+    out = rgba.copy()
+    out.putalpha(mask)
+    return out
+
+
+def to_opaque_rgb(img, bg=(255, 255, 255, 255)):
+    base = Image.new("RGBA", img.size, bg)
+    base.alpha_composite(img.convert("RGBA"))
+    return base.convert("RGB")
 
 
 def fit_on_canvas(img, size, bg=(255, 255, 255, 255), scale=0.72):
@@ -19,7 +56,7 @@ def fit_on_canvas(img, size, bg=(255, 255, 255, 255), scale=0.72):
     fitted.thumbnail((max_side, max_side), Image.Resampling.LANCZOS)
     x = (size - fitted.width) // 2
     y = (size - fitted.height) // 2
-    canvas.paste(fitted, (x, y), fitted)
+    canvas.paste(fitted, (x, y), fitted if fitted.mode == "RGBA" else None)
     return canvas
 
 
@@ -31,22 +68,31 @@ def fit_splash(img, width, height, bg=(255, 255, 255, 255), scale=0.42):
     fitted.thumbnail((max_w, max_h), Image.Resampling.LANCZOS)
     x = (width - fitted.width) // 2
     y = (height - fitted.height) // 2
-    canvas.paste(fitted, (x, y), fitted)
+    canvas.paste(fitted, (x, y), fitted if fitted.mode == "RGBA" else None)
     return canvas
 
 
 def main():
-    logo = Image.open(SRC).convert("RGBA")
+    src_path = SOFTENED if SOFTENED.exists() else SRC
+    logo = Image.open(src_path).convert("RGBA")
     bbox = logo.getbbox()
     if bbox:
         logo = logo.crop(bbox)
 
     PUBLIC.mkdir(parents=True, exist_ok=True)
-    logo_web = logo.copy()
-    logo_web.thumbnail((512, 512), Image.Resampling.LANCZOS)
-    logo_web.save(PUBLIC / "trackfit-logo.png", optimize=True)
-    fit_on_canvas(logo, 192, scale=0.85).save(PUBLIC / "favicon.png", optimize=True)
-    fit_on_canvas(logo, 512, scale=0.85).save(PUBLIC / "apple-touch-icon.png", optimize=True)
+    apply_rounded_rect_mask(fit_on_canvas(logo, 512, scale=0.9), 0.2).save(
+        PUBLIC / "trackfit-logo.png", optimize=True
+    )
+    apply_rounded_rect_mask(fit_on_canvas(logo, 192, scale=0.85), 0.22).save(
+        PUBLIC / "favicon.png", optimize=True
+    )
+    apply_rounded_rect_mask(fit_on_canvas(logo, 512, scale=0.85), 0.22).save(
+        PUBLIC / "apple-touch-icon.png", optimize=True
+    )
+
+    if IOS_ICON.parent.exists():
+        ios = apply_rounded_rect_mask(fit_on_canvas(logo, 1024, scale=0.82), 0.223)
+        to_opaque_rgb(ios).save(IOS_ICON, optimize=True)
 
     launcher = {
         "mipmap-mdpi": 48,
@@ -66,12 +112,14 @@ def main():
     for folder, size in launcher.items():
         out_dir = RES / folder
         out_dir.mkdir(parents=True, exist_ok=True)
-        icon = fit_on_canvas(logo, size, scale=0.82).convert("RGB")
-        icon.save(out_dir / "ic_launcher.png", optimize=True)
-        icon.save(out_dir / "ic_launcher_round.png", optimize=True)
+        square = apply_rounded_rect_mask(fit_on_canvas(logo, size, scale=0.82), 0.22)
+        to_opaque_rgb(square).save(out_dir / "ic_launcher.png", optimize=True)
+        round_icon = apply_circle_mask(fit_on_canvas(logo, size, scale=0.78))
+        to_opaque_rgb(round_icon).save(out_dir / "ic_launcher_round.png", optimize=True)
 
     for folder, size in foreground.items():
         out_dir = RES / folder
+        out_dir.mkdir(parents=True, exist_ok=True)
         fg = fit_on_canvas(logo, size, bg=(0, 0, 0, 0), scale=0.66)
         fg.save(out_dir / "ic_launcher_foreground.png", optimize=True)
 
@@ -95,7 +143,7 @@ def main():
         splash = fit_splash(logo, width, height).convert("RGB")
         splash.save(out_dir / "splash.png", optimize=True)
 
-    print("Wrote TrackFit logo assets to public/ and android res/")
+    print(f"Wrote rounded TrackFit logo assets from {src_path.name}")
 
 
 if __name__ == "__main__":
