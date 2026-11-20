@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "TrackFit runtime architecture",
+    "output": ".archify/architecture-trackfit-runtime-20261120-155808/trackfit-runtime.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/tpanvith4-oss/trackfit.git",
+      "revision": "4991e692b7631b115f5c7da8679d36fe3a1bfb0b",
+      "provider": "github"
+    }
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "User",
+      "sublabel": "Browser / phone",
+      "pos": [40, 280],
+      "size": [120, 60],
+      "sources": [
+        { "path": "client/src/App.jsx", "line": 11, "end_line": 34, "label": "auth gate" }
+      ]
+    },
+    {
+      "id": "firebase",
+      "type": "cloud",
+      "label": "Firebase Hosting",
+      "sublabel": "client/dist SPA",
+      "pos": [40, 120],
+      "size": [140, 60],
+      "sources": [
+        { "path": "firebase.json", "line": 1, "end_line": 16, "label": "hosting" },
+        { "path": "server/src/app.js", "line": 17, "end_line": 23, "label": "CORS origins" }
+      ]
+    },
+    {
+      "id": "client",
+      "type": "frontend",
+      "label": "TrackFit Client",
+      "sublabel": "React + Capacitor",
+      "tag": "Food · Weight · Train · Move · Sleep",
+      "pos": [250, 280],
+      "size": [168, 72],
+      "sources": [
+        { "path": "client/src/features/dashboard/Dashboard.jsx", "line": 14, "end_line": 54, "label": "tabs" },
+        { "path": "package.json", "line": 1, "end_line": 9, "label": "workspaces" },
+        { "path": "client/src/api/apiClient.js", "line": 1, "end_line": 6, "label": "API base" }
+      ]
+    },
+    {
+      "id": "offline-queue",
+      "type": "database",
+      "label": "Offline Sync Queue",
+      "sublabel": "localStorage / Preferences",
+      "pos": [250, 120],
+      "size": [168, 64],
+      "sources": [
+        { "path": "client/src/services/syncQueue.js", "line": 1, "end_line": 29, "label": "queue" },
+        { "path": "client/src/features/dashboard/Dashboard.jsx", "line": 27, "end_line": 40, "label": "replay" },
+        { "path": "client/src/services/storageService.js", "line": 1, "end_line": 21, "label": "storage" }
+      ]
+    },
+    {
+      "id": "auth",
+      "type": "security",
+      "label": "JWT Auth",
+      "sublabel": "Bearer HS256",
+      "tag": "requireAuth",
+      "pos": [520, 120],
+      "size": [140, 64],
+      "sources": [
+        { "path": "server/src/middleware/auth.js", "line": 16, "end_line": 42, "label": "middleware" },
+        { "path": "server/src/services/auth.service.js", "line": 40, "end_line": 59, "label": "sign/verify" },
+        { "path": "server/src/routes/index.js", "line": 16, "end_line": 26, "label": "route guards" }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "Express API",
+      "sublabel": "/api · health first",
+      "tag": "CORS + JSON",
+      "pos": [520, 280],
+      "size": [140, 72],
+      "sources": [
+        { "path": "server/src/app.js", "line": 58, "end_line": 82, "label": "createApp" },
+        { "path": "server/src/routes/index.js", "line": 14, "end_line": 28, "label": "routers" }
+      ]
+    },
+    {
+      "id": "meal-ai",
+      "type": "cloud",
+      "label": "Meal Estimator",
+      "sublabel": "Gemini → NVIDIA fallback",
+      "pos": [520, 450],
+      "size": [160, 64],
+      "sources": [
+        { "path": "server/src/controllers/food.controller.js", "line": 34, "end_line": 37, "label": "aiParse" },
+        { "path": "server/src/services/mealEstimator.service.js", "line": 137, "end_line": 180, "label": "providers" }
+      ]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "Prisma · Docker :5432",
+      "pos": [780, 280],
+      "size": [150, 64],
+      "sources": [
+        { "path": "server/src/config/db.js", "line": 1, "end_line": 19, "label": "Prisma" },
+        { "path": "docker-compose.yml", "line": 1, "end_line": 21, "label": "compose" }
+      ]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Client runtime", "wraps": ["client", "offline-queue"] },
+    { "kind": "security-group", "label": "Express server", "wraps": ["auth", "api"] }
+  ],
+  "connections": [
+    { "id": "users-to-client", "from": "users", "to": "client", "label": "HTTPS / WebView", "variant": "emphasis" },
+    { "id": "firebase-hosts", "from": "firebase", "to": "client", "label": "hosts SPA", "variant": "dashed", "fromSide": "right", "toSide": "top" },
+    { "id": "client-enqueue", "from": "client", "to": "offline-queue", "label": "enqueue offline", "fromSide": "top", "toSide": "bottom" },
+    { "id": "queue-replay", "from": "offline-queue", "to": "api", "label": "replay when online", "variant": "dashed", "fromSide": "right", "toSide": "top" },
+    { "id": "client-to-api", "from": "client", "to": "api", "label": "REST + Bearer JWT", "variant": "emphasis" },
+    { "id": "auth-to-api", "from": "auth", "to": "api", "label": "verify JWT", "variant": "security", "fromSide": "bottom", "toSide": "top" },
+    { "id": "api-to-db", "from": "api", "to": "postgres", "label": "Prisma SQL", "variant": "emphasis" },
+    { "id": "api-to-ai", "from": "api", "to": "meal-ai", "label": "estimate meal", "fromSide": "bottom", "toSide": "top" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Client",
+      "items": [
+        "React + Capacitor UI with five dated/undated tabs",
+        "Offline mutations queue in Preferences / localStorage and replay on online or resume"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "API",
+      "items": [
+        "Express mounts /api after a cheap /health bind for Render wake",
+        "Most domain routes require Bearer JWT; /sync can accept health-sync scope"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "AI food logging",
+      "items": [
+        "Food aiParse calls Gemini first, with an OpenAI-compatible NVIDIA fallback"
+      ]
+    }
+  ]
+}

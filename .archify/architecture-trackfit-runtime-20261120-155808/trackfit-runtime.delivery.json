@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "ced01b32-9a30-44d1-984d-cec16a9be9fe",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "C:\\personal projects\\Food Tracking app\\.archify\\architecture-trackfit-runtime-20261120-155808\\candidate.json",
+  "output": "C:\\personal projects\\Food Tracking app\\.archify\\architecture-trackfit-runtime-20261120-155808\\trackfit-runtime.html",
+  "specification": {
+    "sha256": "219f659e0f918a6c8c8520da9ab9e3c2975949befd5c017a81aae7b8b0221bdc",
+    "bytes": 6019
+  },
+  "artifact": {
+    "sha256": "e0582293ad9e5d91233fd03b59aca2a972325d617a125f224a727c67d0b51571",
+    "bytes": 849949
+  }
+}

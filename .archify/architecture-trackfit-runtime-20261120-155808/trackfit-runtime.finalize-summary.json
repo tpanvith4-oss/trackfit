@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "C:\\personal projects\\Food Tracking app\\.archify\\architecture-trackfit-runtime-20261120-155808\\candidate.json",
+    "sha256": "219f659e0f918a6c8c8520da9ab9e3c2975949befd5c017a81aae7b8b0221bdc",
+    "bytes": 6019
+  },
+  "artifact": {
+    "path": "C:\\personal projects\\Food Tracking app\\.archify\\architecture-trackfit-runtime-20261120-155808\\trackfit-runtime.html",
+    "sha256": "e0582293ad9e5d91233fd03b59aca2a972325d617a125f224a727c67d0b51571",
+    "bytes": 849949
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "C:\\personal projects\\Food Tracking app\\.archify\\architecture-trackfit-runtime-20261120-155808\\trackfit-runtime.finalize.json",
+    "summaryReceipt": "C:\\personal projects\\Food Tracking app\\.archify\\architecture-trackfit-runtime-20261120-155808\\trackfit-runtime.finalize-summary.json",
+    "browserCheckReceipt": "C:\\personal projects\\Food Tracking app\\.archify\\architecture-trackfit-runtime-20261120-155808\\trackfit-runtime.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-20T10:29:12.892Z",
+    "source": "network",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 10699,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "routesOverSuggestedBends": 2
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [],
+      "detours": [
+        {
+          "relationship": {
+            "id": "firebase-hosts",
+            "from": "firebase",
+            "to": "client",
+            "label": "hosts SPA",
+            "collectionIndex": 1,
+            "artifactIndex": 2
+          },
+          "bends": 3,
+          "stretch": 1
+        },
+        {
+          "relationship": {
+            "id": "queue-replay",
+            "from": "offline-queue",
+            "to": "api",
+            "label": "replay when online",
+            "collectionIndex": 3,
+            "artifactIndex": 4
+          },
+          "bends": 3,
+          "stretch": 1
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "firebase → client needs 3 bends: move node firebase or client so they share a row or column with matching centers, or sit diagonally with a clear corner.",
+      "offline-queue → api needs 3 bends: move node offline-queue or api so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}
