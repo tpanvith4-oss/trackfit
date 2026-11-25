@@ -45,3 +45,15 @@ export const aiParseSchema = z
     description: body.description || body.query,
     localTime: body.localTime,
   }));
+
+export const transcribeAudioSchema = z.object({
+  audioBase64: z
+    .string()
+    .min(100, 'Audio recording was empty')
+    .max(12_000_000, 'Audio clip is too large (max ~8 MB)'),
+  mimeType: z
+    .string()
+    .trim()
+    .regex(/^audio\/[a-z0-9.+-]+(?:;\s*codecs=[a-z0-9.,_-]+)?$/i, 'Invalid audio MIME type')
+    .default('audio/webm'),
+});

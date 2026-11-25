@@ -12,9 +12,12 @@ import { dateFromKey, getDayLabel, todayKey } from '../../hooks/useSelectedDate.
 import { BlueprintMealBar } from './BlueprintMealBar.jsx';
 import { getDailyTargets } from './constants.js';
 import { DailyHabitPills } from './DailyHabitPills.jsx';
+import { LiveVoiceCoach } from './LiveVoiceCoach.jsx';
 import { MacroCard } from './MacroCard.jsx';
 import { MealForm } from './MealForm.jsx';
 import { MealHistory } from './MealHistory.jsx';
+
+const AI_MEAL_TYPE_MAP = { breakfast: 'BREAKFAST', lunch: 'LUNCH', dinner: 'DINNER', snack: 'SNACK' };
 
 const createOptimisticId = () => `optimistic-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -53,6 +56,8 @@ export function LogFoodPanel({ selectedDate = todayKey() }) {
   const [deletingIds, setDeletingIds] = useState(() => new Set());
   const [deleteError, setDeleteError] = useState(null);
   const [pendingTemplate, setPendingTemplate] = useState(null);
+  const [liveMealDraft, setLiveMealDraft] = useState(null);
+  const [isRecordingDraft, setIsRecordingDraft] = useState(false);
   const entries = useMemo(() => data?.data ?? [], [data]);
 
   const totals = useMemo(
@@ -79,12 +84,33 @@ export function LogFoodPanel({ selectedDate = todayKey() }) {
           return toDayPayload([created, ...rest]);
         });
         setPendingTemplate(null);
+        setLiveMealDraft(null);
       } catch (err) {
         setData((prev) => toDayPayload((prev?.data ?? []).filter((entry) => entry.id !== optimisticId)));
         throw err;
       }
     },
     [setData, selectedDate],
+  );
+
+  const handleRecordLiveDraft = useCallback(
+    async (draft) => {
+      setIsRecordingDraft(true);
+      try {
+        await handleCreate({
+          name: (draft.mealTitle || 'Voice Logged Meal').slice(0, 120),
+          mealType: AI_MEAL_TYPE_MAP[draft.suggestedMealType] ?? 'LUNCH',
+          calories: Math.max(0, Math.round(Number(draft.totalCalories) || 0)),
+          proteinG: Number(draft.totalProtein) || 0,
+          carbsG: Number(draft.totalCarbs) || 0,
+          fatG: Number(draft.totalFat) || 0,
+          forceOverride: true,
+        });
+      } finally {
+        setIsRecordingDraft(false);
+      }
+    },
+    [handleCreate],
   );
 
   const handleTemplateTap = useCallback(
@@ -156,18 +182,26 @@ export function LogFoodPanel({ selectedDate = todayKey() }) {
     <div className="space-y-4">
       <MacroCard totals={totals} targets={targets} isLoading={isInitialLoad} date={dateFromKey(selectedDate)} title={getDayLabel(selectedDate)} />
 
+      <Card>
+        <LiveVoiceCoach
+          onMealDraft={setLiveMealDraft}
+          onRecordDraft={handleRecordLiveDraft}
+          isRecordingMeal={isRecordingDraft}
+        />
+      </Card>
+
+      <Card
+        title={selectedDate === todayKey() ? 'Log a meal' : `Log a meal for ${getDayLabel(selectedDate)}`}
+        subtitle="Dictate or enter your food to see Search-verified macros, then tap Record Meal"
+      >
+        <MealForm onSubmit={handleCreate} externalEstimate={liveMealDraft} />
+      </Card>
+
       <Card title="Protocol habits" subtitle="Water, creatine, soya rinse, vacuums">
         <DailyHabitPills checkin={checkin ?? EMPTY_CHECKIN} onPatch={handleCheckinPatch} />
         <div className="mt-4">
           <BlueprintMealBar templates={templates ?? []} disabled={Boolean(pendingTemplate)} onSelect={handleTemplateTap} />
         </div>
-      </Card>
-
-      <Card
-        title={selectedDate === todayKey() ? 'Log a meal' : `Log a meal for ${getDayLabel(selectedDate)}`}
-        subtitle="Describe it for an AI estimate or tap a staple, then tweak anything"
-      >
-        <MealForm onSubmit={handleCreate} />
       </Card>
 
       <Card

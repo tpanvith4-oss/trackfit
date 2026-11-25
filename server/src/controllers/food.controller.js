@@ -1,5 +1,5 @@
 import * as foodService from '../services/food.service.js';
-import { estimateMeal } from '../services/mealEstimator.service.js';
+import { estimateMeal, transcribeFoodAudio } from '../services/mealEstimator.service.js';
 import { enrichFoodMacros } from '../services/nutritionValidator.js';
 import { HttpError } from '../utils/HttpError.js';
 
@@ -34,6 +34,11 @@ export async function create(req, res) {
 export async function aiParse(req, res) {
   const estimate = await estimateMeal(req.userId, req.validated.body);
   res.json({ success: true, data: estimate });
+}
+
+export async function transcribe(req, res) {
+  const result = await transcribeFoodAudio(req.userId, req.validated.body);
+  res.json({ success: true, data: result });
 }
 
 export async function remove(req, res) {

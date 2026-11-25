@@ -1,0 +1,10 @@
+{
+  "name": "TrackFit",
+  "description": "Personal nutrition, weight, workout, sleep, and 3D analytics tracker with voice food transcription, real-time Gemini Live nutrition coaching, and Google Search grounded macro estimates.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

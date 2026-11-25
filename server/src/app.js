@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import cors from 'cors';
 import express from 'express';
 import morgan from 'morgan';
@@ -5,6 +8,9 @@ import { env, isProduction } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFound } from './middleware/notFound.js';
 import { HttpError } from './utils/HttpError.js';
+
+const CLIENT_DIST_DIR = fileURLToPath(new URL('../../client/dist', import.meta.url));
+const CLIENT_INDEX_HTML = path.join(CLIENT_DIST_DIR, 'index.html');
 
 // Capacitor WebView origins (Android https/http schemes; iOS https + capacitor schemes).
 const NATIVE_APP_ORIGINS = [
@@ -16,6 +22,8 @@ const NATIVE_APP_ORIGINS = [
 
 // Always allowed browser origins (local Vite + Firebase Hosting).
 const DEFAULT_WEB_ORIGINS = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
   'http://localhost:5173',
   'http://127.0.0.1:5173',
   'https://trackfit-apk.web.app',
@@ -69,15 +77,28 @@ export function createApp() {
   app.get('/api/health', sendOk);
 
   app.use(morgan(isProduction ? 'combined' : 'dev'));
-  app.use(express.json({ limit: '100kb' }));
+  app.use('/api/food/transcribe', express.json({ limit: '12mb' }));
+  app.use(express.json({ limit: '256kb' }));
 
   return app;
 }
 
-/** Mounts authenticated API routes + 404/error handlers after the port is bound. */
+/** Mounts authenticated API routes, static client bundle, and 404/error handlers. */
 export async function mountApiRoutes(app) {
   const { default: apiRouter } = await import('./routes/index.js');
   app.use('/api', apiRouter);
+
+  if (fs.existsSync(CLIENT_INDEX_HTML)) {
+    app.use(express.static(CLIENT_DIST_DIR));
+    app.use((req, res, next) => {
+      if ((req.method === 'GET' || req.method === 'HEAD') && !req.path.startsWith('/api')) {
+        res.sendFile(CLIENT_INDEX_HTML);
+        return;
+      }
+      next();
+    });
+  }
+
   app.use(notFound);
   app.use(errorHandler);
 }

@@ -35,9 +35,13 @@ export default defineConfig(({ mode }) => {
     // Relative asset paths are required when the bundle is served from the Capacitor WebView.
     base: './',
     server: {
-      host: true,
-      port: 5173,
-      strictPort: true,
+      host: '0.0.0.0',
+      port: 3000,
+      allowedHosts: true,
+      proxy: {
+        '/api': 'http://localhost:4000',
+        '/health': 'http://localhost:4000',
+      },
     },
     preview: {
       port: 4173,

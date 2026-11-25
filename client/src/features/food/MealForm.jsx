@@ -1,4 +1,4 @@
-import { useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { foodApi } from '../../api/foodApi.js';
 import { SpinnerIcon } from '../../components/icons.jsx';
 import { Button } from '../../components/ui/Button.jsx';
@@ -69,13 +69,14 @@ function PresetChips({ presets, activePresetId, disabled, onSelect }) {
   );
 }
 
-export function MealForm({ onSubmit }) {
+export function MealForm({ onSubmit, externalEstimate = null }) {
   const id = useId();
   const [form, setForm] = useState(createInitialForm);
   const [activePresetId, setActivePresetId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [aiResetKey, setAiResetKey] = useState(0);
+  const lastExternalRef = useRef(null);
   const submittingRef = useRef(false);
   const { data: frequentMeals, reload: reloadRecommendations } = useAsyncData(
     (signal) => foodApi.recommendations({ limit: 8 }, { signal }),
@@ -128,35 +129,20 @@ export function MealForm({ onSubmit }) {
     setError(null);
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  useEffect(() => {
+    if (externalEstimate && externalEstimate !== lastExternalRef.current) {
+      lastExternalRef.current = externalEstimate;
+      applyEstimate(externalEstimate);
+    }
+  }, [externalEstimate]);
+
+  const recordPayload = async (payload) => {
     if (submittingRef.current) return;
-
-    const name = form.name.trim();
-    const calories = parseInt(form.calories, 10);
-
-    if (!name) {
-      setError(new Error('Enter a name for this food.'));
-      return;
-    }
-    if (!Number.isFinite(calories) || calories < 0) {
-      setError(new Error('Enter calories as a whole number (0 or more).'));
-      return;
-    }
-
     submittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
-      await onSubmit({
-        name,
-        mealType: form.mealType,
-        calories,
-        proteinG: toMacroGrams(form.proteinG),
-        carbsG: toMacroGrams(form.carbsG),
-        fatG: toMacroGrams(form.fatG),
-        forceOverride: atwater.needsFix,
-      });
+      await onSubmit(payload);
       setForm(createInitialForm());
       setActivePresetId(null);
       setAiResetKey((key) => key + 1);
@@ -169,9 +155,53 @@ export function MealForm({ onSubmit }) {
     }
   };
 
+  const handleRecordEstimate = (estimate) => {
+    const calories = Math.min(Math.max(0, Math.round(Number(estimate.totalCalories) || 0)), MAX_CALORIES);
+    return recordPayload({
+      name: (estimate.mealTitle || 'Logged Meal').slice(0, 120),
+      mealType: AI_MEAL_TYPES[estimate.suggestedMealType] ?? form.mealType,
+      calories,
+      proteinG: Math.min(Number(estimate.totalProtein) || 0, MAX_MACRO_G),
+      carbsG: Math.min(Number(estimate.totalCarbs) || 0, MAX_MACRO_G),
+      fatG: Math.min(Number(estimate.totalFat) || 0, MAX_MACRO_G),
+      forceOverride: true,
+    });
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    const name = form.name.trim();
+    const calories = parseInt(form.calories, 10);
+
+    if (!name) {
+      setError(new Error('Enter a name for this food.'));
+      return;
+    }
+    if (!Number.isFinite(calories) || calories < 0) {
+      setError(new Error('Enter calories as a whole number (0 or more).'));
+      return;
+    }
+
+    await recordPayload({
+      name,
+      mealType: form.mealType,
+      calories,
+      proteinG: toMacroGrams(form.proteinG),
+      carbsG: toMacroGrams(form.carbsG),
+      fatG: toMacroGrams(form.fatG),
+      forceOverride: atwater.needsFix,
+    });
+  };
+
   return (
     <div className="space-y-4">
-      <AiMealLogger key={aiResetKey} onEstimate={applyEstimate} disabled={isSubmitting} />
+      <AiMealLogger
+        key={aiResetKey}
+        onEstimate={applyEstimate}
+        onRecordEstimate={handleRecordEstimate}
+        externalEstimate={externalEstimate}
+        disabled={isSubmitting}
+      />
       <PresetChips presets={presets} activePresetId={activePresetId} disabled={isSubmitting} onSelect={applyPreset} />
 
       <form onSubmit={handleSubmit} className="space-y-3">

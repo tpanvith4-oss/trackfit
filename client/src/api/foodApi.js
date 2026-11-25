@@ -1,4 +1,4 @@
-import { apiClient } from './apiClient.js';
+import { API_BASE_URL, apiClient } from './apiClient.js';
 import {
   createFoodEntry,
   getDateRangeForDay,
@@ -7,6 +7,15 @@ import {
 } from '../services/foodApi.js';
 
 export { createFoodEntry, getDateRangeForDay, getFoodLogsByDay, getFoodLogsRange };
+
+export function getLiveWsUrl(token) {
+  const base = new URL(API_BASE_URL);
+  base.protocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
+  base.pathname = '/api/live';
+  base.search = '';
+  if (token) base.searchParams.set('token', token);
+  return base.toString();
+}
 
 /** Facade used across the app; day queries go through timezone-safe helpers. */
 export const foodApi = {
@@ -30,4 +39,7 @@ export const foodApi = {
 
   aiParse: ({ description, localTime }, options) =>
     apiClient.post('/api/food/ai-parse', { description, localTime }, options).then((res) => res.data),
+
+  transcribe: ({ audioBase64, mimeType }, options) =>
+    apiClient.post('/api/food/transcribe', { audioBase64, mimeType }, options).then((res) => res.data),
 };

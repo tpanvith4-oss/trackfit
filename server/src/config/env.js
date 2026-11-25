@@ -3,16 +3,6 @@ import { fileURLToPath } from 'node:url';
 
 dotenv.config({ path: fileURLToPath(new URL('../../.env', import.meta.url)), quiet: true });
 
-const REQUIRED_VARS = ['DATABASE_URL'];
-
-const missing = REQUIRED_VARS.filter((key) => !process.env[key]);
-if (missing.length > 0) {
-  throw new Error(
-    `Missing required environment variable(s): ${missing.join(', ')}. ` +
-      'Copy server/.env.example to server/.env and fill in the values.',
-  );
-}
-
 const parsePort = (value, fallback) => {
   const port = Number.parseInt(value ?? '', 10);
   return Number.isInteger(port) && port > 0 && port < 65536 ? port : fallback;
@@ -48,16 +38,16 @@ function resolveJwtSecret() {
 
 export const env = Object.freeze({
   nodeEnv,
-  port: parsePort(process.env.PORT, 4000),
+  port: parsePort(process.env.PORT, 3000),
   host: process.env.HOST ?? '0.0.0.0',
-  databaseUrl: process.env.DATABASE_URL,
+  databaseUrl: process.env.DATABASE_URL?.trim() || null,
   corsOrigins: parseList(process.env.CORS_ORIGINS),
   jwtSecret: resolveJwtSecret(),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN?.trim() || '30d',
-  // Optional: without a key the API still runs and only the AI meal estimator is unavailable.
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() || null,
-  // gemini-2.5-flash is closed to API keys created after its deprecation; older keys can still opt into it.
-  geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-3.8-flash',
+  geminiModel: process.env.GEMINI_MODEL?.trim() || 'gemini-4-hydrogen',
+  transcribeModel: process.env.GEMINI_TRANSCRIBE_MODEL?.trim() || 'gemini-3.5-transcribe',
+  liveModel: process.env.GEMINI_LIVE_MODEL?.trim() || 'gemini-3.8-live',
   // Optional OpenAI-compatible fallback (NVIDIA NIM). Used when Gemini is unset or the Gemini call fails.
   nvidiaApiKey: process.env.NVIDIA_API_KEY?.trim() || null,
   nvidiaModel: process.env.NVIDIA_MODEL?.trim() || 'nvidia/llama-3.1-nemotron-70b-instruct',

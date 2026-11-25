@@ -1,6 +1,13 @@
 import { getAuthToken } from './authSession.js';
 
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000').replace(/\/+$/, '');
+function resolveDefaultApiBaseUrl() {
+  if (typeof window !== 'undefined' && window.location?.origin && /^https?:$/.test(window.location.protocol)) {
+    return window.location.origin;
+  }
+  return 'http://localhost:4000';
+}
+
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || resolveDefaultApiBaseUrl()).replace(/\/+$/, '');
 
 // Render holds requests while a sleeping instance boots (up to about a minute), so give up later than that.
 const DEFAULT_TIMEOUT_MS = 70_000;

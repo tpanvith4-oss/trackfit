@@ -1,33 +1,26 @@
 import { createApp, mountApiRoutes } from './app.js';
 import { env } from './config/env.js';
+import { attachLiveCoachWebSocket } from './services/liveCoach.service.js';
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
-const PORT = Number.parseInt(process.env.PORT ?? '', 10) || env.port || 4000;
+const PORT = Number.parseInt(process.env.PORT ?? '', 10) || env.port || 3000;
 const HOST = process.env.HOST || env.host || '0.0.0.0';
 
-/**
- * Bind instantly so Render keep-alive / deploy health checks get `/health` within 30s.
- * Prisma + AI route graph load in the background after the port is open.
- */
 const app = createApp();
 
-const server = app.listen(PORT, HOST, () => {
-  console.log(`Server bound to port ${PORT} instantly.`);
+await mountApiRoutes(app);
 
-  // Lazy-load Prisma — never import it before listen (cold-start cost).
+const server = app.listen(PORT, HOST, () => {
+  console.log(`[server] Listening on http://${HOST}:${PORT}`);
+
   import('./config/db.js')
     .then(({ connectDb }) =>
-      connectDb()
-        .then(() => console.log('[db] Connected'))
-        .catch((err) => console.error('DB connect err:', err)),
+      connectDb().then(({ mode }) => console.log(`[db] Ready (${mode})`)),
     )
-    .catch((err) => console.error('DB connect err:', err));
-
-  // Heavy routers (Prisma models, Gemini/NVIDIA) after bind.
-  mountApiRoutes(app)
-    .then(() => console.log('[server] API routes mounted'))
-    .catch((err) => console.error('[server] Failed to mount API routes:', err));
+    .catch((err) => console.error('[db] Init error:', err));
 });
+
+attachLiveCoachWebSocket(server);
 
 let shuttingDown = false;
 const shutdown = (signal) => {
